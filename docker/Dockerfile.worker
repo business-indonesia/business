@@ -1,0 +1,57 @@
+# ==============================================================================
+# Isolated Android Build Worker Dockerfile
+# Encapsulates OpenJDK 17, Android SDK Tools, Gradle, and Node.js Worker Daemon
+# ==============================================================================
+
+FROM eclipse-temurin:17-jdk-jammy
+
+# Set environment variables for Android SDK & Node
+ENV ANDROID_SDK_ROOT="/opt/android-sdk"
+ENV ANDROID_HOME="/opt/android-sdk"
+ENV PATH="${PATH}:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools"
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install essential build dependencies, curl, unzip, git, and Node.js 20
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    unzip \
+    git \
+    build-essential \
+    ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Setup Android SDK Directory
+RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools
+
+# Download and unpack Android Command Line Tools
+# Version: 11076708 (commandlinetools-linux)
+ARG ANDROID_CMDLINE_TOOLS_URL="https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+RUN curl -fsSL ${ANDROID_CMDLINE_TOOLS_URL} -o /tmp/cmdline-tools.zip \
+    && unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline \
+    && mv /tmp/cmdline/cmdline-tools ${ANDROID_SDK_ROOT}/cmdline-tools/latest \
+    && rm -rf /tmp/cmdline*
+
+# Accept licenses and install platform tools, build tools, and target SDK platform
+RUN yes | sdkmanager --licenses || true \
+    && sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+# Setup unprivileged worker user
+RUN useradd -m -u 1001 -s /bin/bash worker && \
+    mkdir -p /app /storage/artifacts && \
+    chown -R worker:worker /app /opt/android-sdk /storage/artifacts
+
+WORKDIR /app
+USER worker
+
+# Copy dependency specifications
+COPY --chown=worker:worker package.json package-lock.json ./
+RUN npm ci
+
+# Copy application source & worker scripts
+COPY --chown=worker:worker . .
+RUN npx prisma generate
+
+CMD ["npm", "run", "worker:dev"]
