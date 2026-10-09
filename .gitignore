@@ -1,44 +1,49 @@
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# Environment variables
+.env
+.env*.local
 
-# testing
-/coverage
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-/dist
-
-# misc
-.DS_Store
-*.pem
-
-# debug logs
+# Node (if used)
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files - NEVER COMMIT SECRETS
-.env*.local
-.env
-!.env.example
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# android & build artifacts
+# Android build outputs & Keystores (MUST NOT BE COMMITTED)
 *.apk
 *.aab
-*.keystore
 *.jks
-/storage/artifacts/*
-!/storage/artifacts/.gitkeep
+*.keystore
+.gradle/
+build/
+app/build/
+android-template/build/
+android-template/app/build/
+android-template/.gradle/
+
+# Temporary and log files
+tmp/
+logs/
+*.log
+.DS_Store
+
+# User storage generated artifacts
+storage/users/*
+!storage/users/.gitkeep
+storage/*.db
+storage/*.sqlite
+storage/*.sqlite3
+!storage/.gitkeep
+
+# Archive deliverables
+*.zip
+*.tar.gz

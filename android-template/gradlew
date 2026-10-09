@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# Standard lightweight Gradle wrapper dispatcher
+set -e
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Check if GRADLE_HOME or gradle command is available
+if command -v gradle >/dev/null 2>&1; then
+    exec gradle "$@"
+fi
+
+# Check for wrapper jar if present
+if [ -f "$DIR/gradle/wrapper/gradle-wrapper.jar" ]; then
+    if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+        JAVACMD="$JAVA_HOME/bin/java"
+    else
+        JAVACMD="java"
+    fi
+    exec "$JAVACMD" -jar "$DIR/gradle/wrapper/gradle-wrapper.jar" "$@"
+fi
+
+echo "ERROR: Neither 'gradle' nor 'gradle-wrapper.jar' was found." >&2
+echo "Please install Gradle or Android SDK to build locally." >&2
+exit 1

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generate App - Generated App</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-wrapper">
+      <a href="/dashboard" class="brand">
+        Generated App
+        <span class="brand-badge">WebView</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/generate" class="active">+ Generate App</a>
+        <a href="/admin" id="adminNavLink" style="display: none;">Admin</a>
+        <a href="#" onclick="handleLogout(); return false;">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="padding-top: 2rem; padding-bottom: 3rem; max-width: 680px;">
+    <div style="margin-bottom: 1.5rem;">
+      <h1 style="font-size: 1.6rem; font-weight: 700;">Generate Android App</h1>
+      <p class="card-subtitle">Convert your website into an installable native Android WebView APK & Google Play AAB bundle.</p>
+    </div>
+
+    <!-- Generator Form Card -->
+    <div class="card" id="formCard">
+      <form id="generateForm">
+        <div class="form-group">
+          <label for="url">Website URL *</label>
+          <input type="url" id="url" name="url" required placeholder="https://example.com" autocomplete="url">
+          <div class="form-hint">HTTPS supported. Must be a valid public website URL.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="name">App Name *</label>
+          <input type="text" id="name" name="name" required placeholder="My Website" maxlength="60">
+          <div class="form-hint">Application name shown on the Android home screen.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="package_name">Package Name</label>
+          <input type="text" id="package_name" name="package_name" placeholder="com.example.myapp">
+          <div class="form-hint">Leave blank to auto-generate from your domain (e.g. id.web.business.sangkala).</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="version">Version</label>
+            <input type="text" id="version" name="version" value="1.0.0" placeholder="1.0.0">
+            <div class="form-hint">Display version (e.g. 1.0.0)</div>
+          </div>
+
+          <div class="form-group">
+            <label for="version_code">Version Code</label>
+            <input type="number" id="version_code" name="version_code" value="1" min="1" placeholder="1">
+            <div class="form-hint">Integer number (e.g. 1, 2, 3)</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="icon">App Icon (Optional)</label>
+          <input type="file" id="icon" name="icon" accept="image/png">
+          <div class="form-hint">PNG only, recommended 512x512 px, maximum 2 MB. Default icon used if empty.</div>
+        </div>
+
+        <button type="submit" id="generateBtn" class="btn btn-primary btn-block" style="padding: 0.85rem; font-size: 1rem; margin-top: 0.5rem;">
+          Generate APK + AAB
+        </button>
+      </form>
+    </div>
+
+    <!-- Real-Time Progress Card (Initially Hidden) -->
+    <div class="card progress-card" id="progressCard" style="display: none;">
+      <h3 class="card-title" id="progressTitle">Generating Android App...</h3>
+      <p class="card-subtitle" id="progressSubtitle">Please wait while the build pipeline is running...</p>
+
+      <ul class="stepper">
+        <li class="step-item" id="step1">
+          <span class="step-icon">1</span>
+          <span>Creating project</span>
+        </li>
+        <li class="step-item" id="step2">
+          <span class="step-icon">2</span>
+          <span>Creating WebView</span>
+        </li>
+        <li class="step-item" id="step3">
+          <span class="step-icon">3</span>
+          <span>Configuring Android</span>
+        </li>
+        <li class="step-item" id="step4">
+          <span class="step-icon">4</span>
+          <span>Building APK</span>
+        </li>
+        <li class="step-item" id="step5">
+          <span class="step-icon">5</span>
+          <span>Building AAB</span>
+        </li>
+        <li class="step-item" id="step6">
+          <span class="step-icon">6</span>
+          <span>Finished</span>
+        </li>
+      </ul>
+
+      <!-- Result Card Area -->
+      <div id="resultArea" style="display: none; margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
+        <div id="successResult" style="display: none;">
+          <p style="font-weight: 700; color: var(--success); font-size: 1.05rem; margin-bottom: 1rem;">
+            ✓ Build completed successfully.
+          </p>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <a id="downloadApkBtn" href="#" class="btn btn-primary">
+              Download APK
+            </a>
+            <a id="downloadAabBtn" href="#" class="btn btn-secondary">
+              Download AAB
+            </a>
+            <a href="/dashboard" class="btn btn-secondary">
+              Go to Dashboard
+            </a>
+          </div>
+        </div>
+
+        <div id="errorResult" style="display: none;">
+          <p style="font-weight: 700; color: var(--danger); font-size: 1.05rem; margin-bottom: 0.5rem;">
+            ✗ Build did not complete
+          </p>
+          <pre id="errorLog" style="background: #0F172A; color: #F8FAFC; padding: 1rem; border-radius: 8px; font-size: 0.8rem; overflow: auto; max-height: 250px; white-space: pre-wrap; font-family: monospace; margin-bottom: 1rem;"></pre>
+          <div style="display: flex; gap: 0.75rem;">
+            <button class="btn btn-secondary" onclick="resetForm()">Try Again</button>
+            <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google Play Disclaimer Alert -->
+    <div class="alert-box">
+      <strong>Google Play Console Notice:</strong><br>
+      Google Play dapat menerapkan persyaratan dan kebijakan tambahan terhadap aplikasi WebView. Pastikan Anda memiliki kebijakan privasi (Privacy Policy), ketentuan layanan, hak atas kepemilikan/konten website, dan mematuhi seluruh kebijakan Google Play Developer sebelum mempublikasikan file AAB.
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let activeAppId = null;
+    let pollTimer = null;
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (user && user.role === 'admin') {
+        document.getElementById('adminNavLink').style.display = 'inline-block';
+      }
+
+      // Auto-generate package name as user types URL
+      const urlInput = document.getElementById('url');
+      const pkgInput = document.getElementById('package_name');
+      urlInput.addEventListener('blur', () => {
+        if (!pkgInput.value.trim() && urlInput.value.trim()) {
+          try {
+            const raw = urlInput.value.startsWith('http') ? urlInput.value : 'https://' + urlInput.value;
+            const u = new URL(raw);
+            const host = u.hostname.toLowerCase();
+            const parts = host.split('.').filter(Boolean).reverse();
+            if (parts.length >= 2) {
+              pkgInput.value = parts.join('.');
+            }
+          } catch (e) {}
+        }
+      });
+    });
+
+    document.getElementById('generateForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const btn = document.getElementById('generateBtn');
+
+      btn.disabled = true;
+      btn.textContent = 'Starting Build...';
+
+      const formData = new FormData(form);
+
+      try {
+        const res = await API.post('/api/apps/generate', formData);
+        activeAppId = res.app_id;
+        showProgressCard();
+        startPolling(activeAppId);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Generate APK + AAB';
+      }
+    });
+
+    function showProgressCard() {
+      document.getElementById('formCard').style.display = 'none';
+      document.getElementById('progressCard').style.display = 'block';
+      document.getElementById('resultArea').style.display = 'none';
+      setStepActive(1);
+    }
+
+    function setStepActive(stepNum) {
+      for (let i = 1; i <= 6; i++) {
+        const item = document.getElementById(`step${i}`);
+        const icon = item.querySelector('.step-icon');
+        item.classList.remove('active', 'completed');
+        if (i < stepNum) {
+          item.classList.add('completed');
+          icon.textContent = '✓';
+        } else if (i === stepNum) {
+          item.classList.add('active');
+          icon.textContent = '•';
+        } else {
+          icon.textContent = i;
+        }
+      }
+    }
+
+    function setAllStepsCompleted() {
+      for (let i = 1; i <= 6; i++) {
+        const item = document.getElementById(`step${i}`);
+        item.classList.remove('active');
+        item.classList.add('completed');
+        item.querySelector('.step-icon').textContent = '✓';
+      }
+    }
+
+    function startPolling(appId) {
+      let stepCounter = 1;
+      const stepProgression = setInterval(() => {
+        if (stepCounter < 5) {
+          stepCounter++;
+          setStepActive(stepCounter);
+        }
+      }, 1200);
+
+      pollTimer = setInterval(async () => {
+        try {
+          const res = await API.get(`/api/apps/${appId}`);
+          const app = res.app;
+          if (!app) return;
+
+          if (app.status === 'Success') {
+            clearInterval(pollTimer);
+            clearInterval(stepProgression);
+            setAllStepsCompleted();
+            showSuccess(app);
+          } else if (app.status === 'Failed') {
+            clearInterval(pollTimer);
+            clearInterval(stepProgression);
+            showError(app);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }, 2000);
+    }
+
+    function showSuccess(app) {
+      document.getElementById('progressTitle').textContent = 'Build Complete!';
+      document.getElementById('progressSubtitle').textContent = 'Your release APK and AAB are ready to download.';
+      document.getElementById('resultArea').style.display = 'block';
+      document.getElementById('successResult').style.display = 'block';
+      document.getElementById('downloadApkBtn').href = `/api/apps/${app.id}/download/apk`;
+      document.getElementById('downloadAabBtn').href = `/api/apps/${app.id}/download/aab`;
+    }
+
+    function showError(app) {
+      document.getElementById('progressTitle').textContent = 'Build Failed';
+      document.getElementById('progressSubtitle').textContent = 'The build pipeline encountered an issue.';
+      document.getElementById('resultArea').style.display = 'block';
+      document.getElementById('errorResult').style.display = 'block';
+      document.getElementById('errorLog').textContent = app.build_log || 'An unknown build error occurred.';
+    }
+
+    function resetForm() {
+      clearInterval(pollTimer);
+      document.getElementById('formCard').style.display = 'block';
+      document.getElementById('progressCard').style.display = 'none';
+      document.getElementById('generateBtn').disabled = false;
+      document.getElementById('generateBtn').textContent = 'Generate APK + AAB';
+    }
+  </script>
+</body>
+</html>

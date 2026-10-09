@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace '{{PACKAGE_NAME}}'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId '{{PACKAGE_NAME}}'
+        minSdk 21
+        targetSdk 34
+        versionCode {{VERSION_CODE}}
+        versionName '{{VERSION_NAME}}'
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("release.keystore")
+            storePassword "android_release_pass"
+            keyAlias "release_key"
+            keyPassword "android_release_pass"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Zero third-party dependencies: pure Android WebView and Activity
+}
