@@ -1289,8 +1289,19 @@
       }
     }
 
+    function cleanRepoSlug(input) {
+      if (!input) return '';
+      let s = input.trim();
+      s = s.replace(/^https?:\/\/github\.com\//i, '');
+      s = s.replace(/\.git$/i, '');
+      s = s.replace(/^\/+|\/+$/g, '');
+      return s;
+    }
+
     async function testCloudConnection() {
-      const repo = document.getElementById('cfg-repo').value.trim();
+      const rawRepo = document.getElementById('cfg-repo').value.trim();
+      const repo = cleanRepoSlug(rawRepo);
+      if (repo) document.getElementById('cfg-repo').value = repo;
       const token = document.getElementById('cfg-token').value.trim();
       const statusEl = document.getElementById('cloud-test-status');
       const btn = document.getElementById('btn-test-cloud');
@@ -1335,7 +1346,9 @@
 
     function saveCloudConfig(e) {
       e.preventDefault();
-      const repo = document.getElementById('cfg-repo').value.trim();
+      const rawRepo = document.getElementById('cfg-repo').value.trim();
+      const repo = cleanRepoSlug(rawRepo);
+      if (repo) document.getElementById('cfg-repo').value = repo;
       const token = document.getElementById('cfg-token').value.trim();
       const branch = document.getElementById('cfg-branch').value.trim() || 'main';
 
