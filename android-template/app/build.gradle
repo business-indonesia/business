@@ -20,6 +20,8 @@ android {
             storePassword "android_release_pass"
             keyAlias "release_key"
             keyPassword "android_release_pass"
+            v1SigningEnabled true
+            v2SigningEnabled true
         }
     }
 

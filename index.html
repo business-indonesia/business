@@ -680,8 +680,16 @@
 
           <div class="form-group">
             <label for="gen-icon">App Icon (Optional)</label>
-            <input type="file" id="gen-icon" accept="image/png">
-            <div class="form-hint">PNG only, maksimal 2 MB. Icon default otomatis dipakai jika kosong.</div>
+            <input type="file" id="gen-icon" accept="image/png,image/jpeg,image/webp">
+            <div class="form-hint">Format PNG/JPG/WebP (disarankan 512x512). Icon default otomatis dipakai jika kosong.</div>
+            <div id="icon-preview-box" style="display: none; align-items: center; gap: 0.75rem; margin-top: 0.65rem; padding: 0.5rem 0.75rem; background: #F8FAFC; border: 1px solid var(--border-color); border-radius: 8px;">
+              <img id="icon-preview-img" src="" alt="Icon Preview" style="width: 48px; height: 48px; border-radius: 10px; object-fit: cover; border: 1px solid #CBD5E1; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <div style="flex: 1;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Icon Kustom Aktif</div>
+                <div style="font-size: 0.75rem; color: var(--success); font-weight: 500;">✓ Otomatis disinkronkan ke dalam APK & AAB</div>
+              </div>
+              <button type="button" id="btn-clear-icon" class="btn btn-sm btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">Hapus</button>
+            </div>
           </div>
 
           <button type="submit" id="btn-submit-generate" class="btn btn-primary btn-block" style="padding: 0.85rem; font-size: 1rem; margin-top: 0.5rem;">
@@ -718,6 +726,17 @@
               <button id="btn-dl-aab" class="btn btn-secondary">Download AAB (.aab)</button>
               <button id="btn-dl-source" class="btn btn-secondary">Download Source (.zip)</button>
               <button class="btn btn-secondary" onclick="navigateTo('dashboard')">Dashboard</button>
+            </div>
+
+            <!-- Panduan Instalasi Play Protect -->
+            <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 0.85rem 1rem; margin-top: 1.25rem; font-size: 0.85rem; color: #1E3A8A; line-height: 1.55;">
+              <div style="font-weight: 700; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem;">
+                <span>🛡️</span> <span>Panduan Instalasi APK di HP Android:</span>
+              </div>
+              <ul style="padding-left: 1.2rem; margin: 0;">
+                <li><strong>Jika dicegat Play Protect ("Aplikasi diblokir..."):</strong> Ketuk <u>Detail selengkapnya</u> (ikon panah) ➔ ketuk link <strong>"Tetap instal (tidak aman)"</strong>. <em>(PENTING: Jangan tekan tombol "OKE", karena tombol OKE akan menolak instalasi).</em></li>
+                <li><strong>Jika muncul "Aplikasi tidak terinstal":</strong> Jika di HP Anda sebelumnya pernah terpasang aplikasi dengan nama paket yang sama (misal testing), silakan <strong>Uninstall (Copot Pemasangan)</strong> aplikasi versi lama tersebut terlebih dahulu.</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -1366,6 +1385,73 @@
     setTimeout(updateCloudStatusUI, 100);
 
     /* ======================================================================
+       APP ICON PREVIEW & CANVAS RESIZER (192x192 PNG)
+       ====================================================================== */
+    let currentIconBase64 = ''; // Holds 192x192 PNG Data URL
+
+    const genIconInput = document.getElementById('gen-icon');
+    const iconPreviewBox = document.getElementById('icon-preview-box');
+    const iconPreviewImg = document.getElementById('icon-preview-img');
+    const btnClearIcon = document.getElementById('btn-clear-icon');
+
+    if (genIconInput) {
+      genIconInput.addEventListener('change', function(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) {
+          clearAppIcon();
+          return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+          showToast('Harap pilih file gambar (PNG atau JPG)', 'error');
+          clearAppIcon();
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const img = new Image();
+          img.onload = function() {
+            // Resize to 192x192 PNG (standard xxxhdpi launcher icon size)
+            const canvas = document.createElement('canvas');
+            canvas.width = 192;
+            canvas.height = 192;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 192, 192);
+
+            // Draw centered maintaining square aspect ratio
+            const minDim = Math.min(img.width, img.height);
+            const sx = (img.width - minDim) / 2;
+            const sy = (img.height - minDim) / 2;
+            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 192, 192);
+
+            currentIconBase64 = canvas.toDataURL('image/png');
+            if (iconPreviewImg) iconPreviewImg.src = currentIconBase64;
+            if (iconPreviewBox) iconPreviewBox.style.display = 'flex';
+            showToast('Icon aplikasi berhasil dipilih & disesuaikan!', 'success');
+          };
+          img.onerror = function() {
+            showToast('Gagal memproses gambar icon', 'error');
+            clearAppIcon();
+          };
+          img.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function clearAppIcon() {
+      currentIconBase64 = '';
+      if (genIconInput) genIconInput.value = '';
+      if (iconPreviewImg) iconPreviewImg.src = '';
+      if (iconPreviewBox) iconPreviewBox.style.display = 'none';
+    }
+
+    if (btnClearIcon) {
+      btnClearIcon.addEventListener('click', clearAppIcon);
+    }
+
+    /* ======================================================================
        FORM SUBMISSION & BUILD DISPATCHER
        ====================================================================== */
     document.getElementById('form-generate').addEventListener('submit', async (e) => {
@@ -1406,6 +1492,7 @@
       }
 
       const cleanName = appName.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-') || 'Generated-App';
+      const rawIconB64 = currentIconBase64 ? currentIconBase64.replace(/^data:image\/[a-z]+;base64,/, '') : '';
 
       pendingAppInput = {
         url: targetUrl,
@@ -1413,7 +1500,8 @@
         clean_name: cleanName,
         package_name: pkgName,
         version,
-        version_code: versionCode
+        version_code: versionCode,
+        app_icon_base64: rawIconB64
       };
 
       const cloudCfg = getCloudConfig();
@@ -1482,6 +1570,20 @@
       addLog(`Menghubungkan ke Cloud Runner di repository: ${cloudCfg.repo}`);
 
       try {
+        const dispatchInputs = {
+          target_url: appInput.url,
+          app_name: appInput.name,
+          package_name: appInput.package_name,
+          version_name: appInput.version,
+          version_code: String(appInput.version_code)
+        };
+        if (appInput.app_icon_base64) {
+          dispatchInputs.app_icon_base64 = appInput.app_icon_base64;
+          addLog('✓ Menyertakan App Icon kustom untuk disinkronkan ke dalam APK & AAB...');
+        } else {
+          addLog('Menggunakan App Icon default template Android...');
+        }
+
         // 1. Dispatch workflow
         const dispatchRes = await fetch(`https://api.github.com/repos/${cloudCfg.repo}/actions/workflows/build-android.yml/dispatches`, {
           method: 'POST',
@@ -1492,13 +1594,7 @@
           },
           body: JSON.stringify({
             ref: cloudCfg.branch || 'main',
-            inputs: {
-              target_url: appInput.url,
-              app_name: appInput.name,
-              package_name: appInput.package_name,
-              version_name: appInput.version,
-              version_code: String(appInput.version_code)
-            }
+            inputs: dispatchInputs
           })
         });
 
@@ -1730,7 +1826,19 @@
     function assembleSourceZipBlob(app, iconBytes) {
       const files = {};
       const pkgPath = app.package_name.replace(/\./g, '/');
-      const icon = iconBytes || getDefaultIcon();
+      let icon = iconBytes;
+      if (!icon && app.app_icon_base64) {
+        try {
+          const binStr = atob(app.app_icon_base64);
+          const len = binStr.length;
+          const u8 = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            u8[i] = binStr.charCodeAt(i);
+          }
+          icon = u8;
+        } catch(e) {}
+      }
+      if (!icon) icon = getDefaultIcon();
 
       files['settings.gradle'] = `pluginManagement {
     repositories {
@@ -1799,6 +1907,8 @@ android {
             storePassword "android_release_pass"
             keyAlias "release_key"
             keyPassword "android_release_pass"
+            v1SigningEnabled true
+            v2SigningEnabled true
         }
     }
 
@@ -1829,8 +1939,7 @@ dependencies {
 `;
 
       files['app/src/main/AndroidManifest.xml'] = `<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="${app.package_name}">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -1842,7 +1951,7 @@ dependencies {
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        android:usesCleartextTraffic="false">
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".MainActivity"
@@ -2120,6 +2229,7 @@ public class MainActivity extends Activity {
 
       ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi'].forEach(density => {
         files[`app/src/main/res/mipmap-${density}/ic_launcher.png`] = icon;
+        files[`app/src/main/res/mipmap-${density}/ic_launcher_round.png`] = icon;
       });
 
       files['build-apk.sh'] = `#!/usr/bin/env bash

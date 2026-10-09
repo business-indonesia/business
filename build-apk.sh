@@ -9,6 +9,7 @@ NAME="${2:-Example App}"
 PACKAGE="${3:-com.example.app}"
 VERSION="${4:-1.0.0}"
 VERSION_CODE="${5:-1}"
+ICON="${6:-}"
 
 echo "=================================================="
 echo "  Generated App - Android Native Builder"
@@ -17,6 +18,9 @@ echo "Target URL   : $URL"
 echo "App Name     : $NAME"
 echo "Package Name : $PACKAGE"
 echo "Version      : $VERSION ($VERSION_CODE)"
+if [ -n "$ICON" ] && [ -f "$ICON" ]; then
+    echo "App Icon     : $ICON"
+fi
 echo "=================================================="
 
 # Check Java
@@ -43,7 +47,7 @@ CLEAN_NAME=$(echo "$NAME" | tr -cd '[:alnum:]_-' | tr ' ' '-')
 sed -i.bak "s/{{PACKAGE_NAME}}/$PACKAGE/g" "$BUILD_DIR/app/build.gradle"
 sed -i.bak "s/{{VERSION_CODE}}/$VERSION_CODE/g" "$BUILD_DIR/app/build.gradle"
 sed -i.bak "s/{{VERSION_NAME}}/$VERSION/g" "$BUILD_DIR/app/build.gradle"
-sed -i.bak "s/{{PACKAGE_NAME}}/$PACKAGE/g" "$BUILD_DIR/app/src/main/AndroidManifest.xml"
+sed -i.bak "s/{{PACKAGE_NAME}}/$PACKAGE/g" "$BUILD_DIR/app/src/main/AndroidManifest.xml" 2>/dev/null || true
 sed -i.bak "s|{{APP_NAME}}|$NAME|g" "$BUILD_DIR/app/src/main/res/values/strings.xml"
 sed -i.bak "s|{{TARGET_URL}}|$URL|g" "$BUILD_DIR/app/src/main/res/values/strings.xml"
 
@@ -52,6 +56,15 @@ sed -i.bak "s/{{PACKAGE_NAME}}/$PACKAGE/g" "$BUILD_DIR/app/src/main/java/com/tem
 PKG_PATH=$(echo "$PACKAGE" | tr '.' '/')
 mkdir -p "$BUILD_DIR/app/src/main/java/$PKG_PATH"
 mv "$BUILD_DIR/app/src/main/java/com/template/app/MainActivity.java" "$BUILD_DIR/app/src/main/java/$PKG_PATH/MainActivity.java"
+
+# Injeksi Icon jika ada
+if [ -n "$ICON" ] && [ -f "$ICON" ]; then
+    echo "[*] Menyinkronkan App Icon kustom..."
+    for d in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+        cp "$ICON" "$BUILD_DIR/app/src/main/res/$d/ic_launcher.png"
+        cp "$ICON" "$BUILD_DIR/app/src/main/res/$d/ic_launcher_round.png"
+    done
+fi
 
 # Keystore
 if command -v keytool >/dev/null 2>&1; then

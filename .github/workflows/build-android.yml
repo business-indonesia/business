@@ -23,6 +23,10 @@ on:
         description: 'Version Code'
         required: true
         default: '1'
+      app_icon_base64:
+        description: 'App Icon Base64 (PNG)'
+        required: false
+        default: ''
   push:
     branches: [ main, master ]
 
@@ -72,8 +76,8 @@ jobs:
           sed -i "s/{{VERSION_CODE}}/$VER_CODE/g" app/build.gradle
           sed -i "s/{{VERSION_NAME}}/$VER_NAME/g" app/build.gradle
 
-          # Update AndroidManifest.xml
-          sed -i "s/{{PACKAGE_NAME}}/$PKG_NAME/g" app/src/main/AndroidManifest.xml
+          # Update AndroidManifest.xml (if placeholder exists)
+          sed -i "s/{{PACKAGE_NAME}}/$PKG_NAME/g" app/src/main/AndroidManifest.xml 2>/dev/null || true
 
           # Update strings.xml (safely escape XML)
           SAFE_APP_NAME=$(echo "$APP_NAME" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
@@ -87,18 +91,48 @@ jobs:
           mkdir -p "app/src/main/java/$PKG_PATH"
           mv app/src/main/java/com/template/app/MainActivity.java "app/src/main/java/$PKG_PATH/MainActivity.java"
 
-      - name: Generate Release Keystore
+          # Inject Custom App Icon if provided
+          APP_ICON_B64="${{ github.event.inputs.app_icon_base64 }}"
+          if [ -n "$APP_ICON_B64" ]; then
+            echo "Decoding and synchronizing custom app icon..."
+            echo "$APP_ICON_B64" | base64 -d > /tmp/custom_icon.png
+            if [ -s /tmp/custom_icon.png ]; then
+              for dir in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+                cp /tmp/custom_icon.png "app/src/main/res/$dir/ic_launcher.png"
+                cp /tmp/custom_icon.png "app/src/main/res/$dir/ic_launcher_round.png"
+              done
+              echo "✓ Custom App Icon successfully applied to all densities!"
+            else
+              echo "Warning: Decoded icon file was empty; retaining default icon."
+            fi
+          else
+            echo "No custom icon provided; retaining default icon."
+          fi
+
+      - name: Cache Release Keystore
+        uses: actions/cache@v4
+        id: keystore-cache
+        with:
+          path: android-template/app/release.keystore
+          key: android-release-keystore-master-v1
+
+      - name: Setup Release Keystore
         run: |
           cd android-template/app
-          keytool -genkeypair -v \
-            -keystore release.keystore \
-            -alias release_key \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass android_release_pass \
-            -keypass android_release_pass \
-            -dname "CN=GeneratedApp, OU=Mobile, O=Business, L=Jakarta, ST=DKI, C=ID"
+          if [ -f release.keystore ]; then
+            echo "✓ Using cached release keystore (consistent certificate signature)."
+          else
+            echo "Generating persistent release keystore..."
+            keytool -genkeypair -v \
+              -keystore release.keystore \
+              -alias release_key \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass android_release_pass \
+              -keypass android_release_pass \
+              -dname "CN=GeneratedApp, OU=Mobile, O=Business, L=Jakarta, ST=DKI, C=ID"
+          fi
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x android-template/gradlew
