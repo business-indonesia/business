@@ -40,5 +40,6 @@ android {
 }
 
 dependencies {
-    // Zero third-party dependencies: pure Android WebView and Activity
+    // Lightweight native Pull-to-Refresh
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
 }

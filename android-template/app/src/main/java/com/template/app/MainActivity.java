@@ -1,28 +1,51 @@
 package {{PACKAGE_NAME}};
 
+import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.CookieManager;
+import android.webkit.DownloadListener;
+import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 public class MainActivity extends Activity {
 
     private WebView webView;
     private ProgressBar progressBar;
+    private SwipeRefreshLayout swipeRefreshLayout;
+    private View offlineLayout;
+    private View splashLayout;
+    private Button btnRetry;
+    private boolean isSplashDismissed = false;
+
     private ValueCallback<Uri[]> fileUploadCallback;
     private final static int FILE_CHOOSER_REQUEST_CODE = 1001;
 
@@ -33,14 +56,150 @@ public class MainActivity extends Activity {
 
         webView = findViewById(R.id.webView);
         progressBar = findViewById(R.id.progressBar);
+        swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout);
+        offlineLayout = findViewById(R.id.offlineLayout);
+        splashLayout = findViewById(R.id.splashLayout);
+        btnRetry = findViewById(R.id.btnRetry);
 
+        setupPullToRefresh();
+        setupOfflineRetry();
         setupWebView();
+        setupDownloadListener();
+
+        // Safety timer: Dismiss splash after max 2.5s regardless of network speed
+        new Handler(Looper.getMainLooper()).postDelayed(this::dismissSplash, 2500);
 
         String targetUrl = getString(R.string.target_url);
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState);
         } else {
-            webView.loadUrl(targetUrl);
+            if (isNetworkAvailable()) {
+                webView.loadUrl(targetUrl);
+            } else {
+                showOfflineError();
+                dismissSplash();
+            }
+        }
+    }
+
+    private void setupPullToRefresh() {
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setColorSchemeColors(Color.parseColor("#2563EB"), Color.parseColor("#1D4ED8"));
+            swipeRefreshLayout.setOnRefreshListener(() -> {
+                if (isNetworkAvailable()) {
+                    hideOfflineError();
+                    webView.reload();
+                } else {
+                    swipeRefreshLayout.setRefreshing(false);
+                    showOfflineError();
+                }
+            });
+            // Ensure swipe refresh only triggers when scrolled to the very top
+            swipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> webView != null && webView.getScrollY() > 0);
+        }
+    }
+
+    private void setupOfflineRetry() {
+        if (btnRetry != null) {
+            btnRetry.setOnClickListener(v -> {
+                if (isNetworkAvailable()) {
+                    hideOfflineError();
+                    String curUrl = webView.getUrl();
+                    if (curUrl == null || curUrl.isEmpty() || curUrl.equals("about:blank")) {
+                        webView.loadUrl(getString(R.string.target_url));
+                    } else {
+                        webView.reload();
+                    }
+                } else {
+                    Toast.makeText(MainActivity.this, "Koneksi internet belum tersedia. Silakan periksa jaringan Anda.", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
+    private void dismissSplash() {
+        if (!isSplashDismissed && splashLayout != null) {
+            isSplashDismissed = true;
+            splashLayout.animate()
+                    .alpha(0f)
+                    .setDuration(300)
+                    .withEndAction(() -> splashLayout.setVisibility(View.GONE));
+        }
+    }
+
+    private void showOfflineError() {
+        if (offlineLayout != null) {
+            offlineLayout.setVisibility(View.VISIBLE);
+        }
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setRefreshing(false);
+        }
+        if (progressBar != null) {
+            progressBar.setVisibility(View.GONE);
+        }
+    }
+
+    private void hideOfflineError() {
+        if (offlineLayout != null) {
+            offlineLayout.setVisibility(View.GONE);
+        }
+    }
+
+    private boolean isNetworkAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Network network = cm.getActiveNetwork();
+            if (network == null) return false;
+            NetworkCapabilities act = cm.getNetworkCapabilities(network);
+            return act != null && (act.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    act.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                    act.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
+        } else {
+            NetworkInfo netInfo = cm.getActiveNetworkInfo();
+            return netInfo != null && netInfo.isConnected();
+        }
+    }
+
+    private void setupDownloadListener() {
+        if (webView != null) {
+            webView.setDownloadListener(new DownloadListener() {
+                @Override
+                public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
+                    try {
+                        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                        if (mimetype != null && !mimetype.isEmpty()) {
+                            request.setMimeType(mimetype);
+                        }
+                        String cookies = CookieManager.getInstance().getCookie(url);
+                        if (cookies != null) {
+                            request.addRequestHeader("cookie", cookies);
+                        }
+                        if (userAgent != null) {
+                            request.addRequestHeader("User-Agent", userAgent);
+                        }
+                        String filename = URLUtil.guessFileName(url, contentDisposition, mimetype);
+                        request.setDescription("Mengunduh berkas...");
+                        request.setTitle(filename);
+                        request.allowScanningByMediaScanner();
+                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
+
+                        DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                        if (dm != null) {
+                            dm.enqueue(request);
+                            Toast.makeText(MainActivity.this, "Memulai unduhan: " + filename, Toast.LENGTH_SHORT).show();
+                        }
+                    } catch (Exception e) {
+                        try {
+                            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                            startActivity(intent);
+                        } catch (Exception ex) {
+                            Toast.makeText(MainActivity.this, "Gagal mengunduh file", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+            });
         }
     }
 
@@ -142,8 +301,27 @@ public class MainActivity extends Activity {
             if (progressBar != null) {
                 progressBar.setVisibility(View.GONE);
             }
+            if (swipeRefreshLayout != null) {
+                swipeRefreshLayout.setRefreshing(false);
+            }
+            dismissSplash();
             CookieManager.getInstance().flush();
             super.onPageFinished(view, url);
+        }
+
+        @Override
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            super.onReceivedError(view, errorCode, description, failingUrl);
+            showOfflineError();
+        }
+
+        @TargetApi(Build.VERSION_CODES.M)
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            super.onReceivedError(view, request, error);
+            if (request.isForMainFrame()) {
+                showOfflineError();
+            }
         }
     }
 
@@ -211,6 +389,10 @@ public class MainActivity extends Activity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (offlineLayout != null && offlineLayout.getVisibility() == View.VISIBLE) {
+                finish();
+                return true;
+            }
             if (webView != null && webView.canGoBack()) {
                 webView.goBack();
                 return true;
@@ -224,7 +406,9 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
+        if (offlineLayout != null && offlineLayout.getVisibility() == View.VISIBLE) {
+            super.onBackPressed();
+        } else if (webView != null && webView.canGoBack()) {
             webView.goBack();
         } else {
             super.onBackPressed();
