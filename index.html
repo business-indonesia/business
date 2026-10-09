@@ -1385,14 +1385,51 @@
     setTimeout(updateCloudStatusUI, 100);
 
     /* ======================================================================
-       APP ICON PREVIEW & CANVAS RESIZER (192x192 PNG)
+       APP ICON PREVIEW & ADAPTIVE COMPRESSOR (< 30 KB Safe Limit)
        ====================================================================== */
-    let currentIconBase64 = ''; // Holds 192x192 PNG Data URL
+    let currentIconBase64 = ''; // Holds PNG Data URL for UI preview
+    let currentRawIconB64 = ''; // Holds pure Base64 string for GitHub API (< 35,000 chars)
 
     const genIconInput = document.getElementById('gen-icon');
     const iconPreviewBox = document.getElementById('icon-preview-box');
     const iconPreviewImg = document.getElementById('icon-preview-img');
     const btnClearIcon = document.getElementById('btn-clear-icon');
+
+    function processAndOptimizeIcon(img) {
+      // Android standard launcher icon size: 96x96 px (xhdpi) gives razor-sharp icons
+      // We test downscaling if needed so the base64 payload is guaranteed to stay < 35,000 chars
+      const targetSizes = [96, 72, 48];
+      let bestDataUrl = '';
+      let bestB64 = '';
+
+      for (let size of targetSizes) {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        const minDim = Math.min(img.width, img.height);
+        const sx = (img.width - minDim) / 2;
+        const sy = (img.height - minDim) / 2;
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+
+        const dataUrl = canvas.toDataURL('image/png');
+        const b64 = dataUrl.replace(/^data:image\/[a-z]+;base64,/, '');
+
+        bestDataUrl = dataUrl;
+        bestB64 = b64;
+
+        // GitHub Actions allows 65,535 chars max.
+        // Sticking to <= 35,000 gives 100% guarantee against "inputs are too large"
+        if (b64.length <= 35000) {
+          break;
+        }
+      }
+
+      return { dataUrl: bestDataUrl, b64: bestB64 };
+    }
 
     if (genIconInput) {
       genIconInput.addEventListener('change', function(e) {
@@ -1412,23 +1449,12 @@
         reader.onload = function(evt) {
           const img = new Image();
           img.onload = function() {
-            // Resize to 192x192 PNG (standard xxxhdpi launcher icon size)
-            const canvas = document.createElement('canvas');
-            canvas.width = 192;
-            canvas.height = 192;
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, 192, 192);
-
-            // Draw centered maintaining square aspect ratio
-            const minDim = Math.min(img.width, img.height);
-            const sx = (img.width - minDim) / 2;
-            const sy = (img.height - minDim) / 2;
-            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 192, 192);
-
-            currentIconBase64 = canvas.toDataURL('image/png');
+            const opt = processAndOptimizeIcon(img);
+            currentIconBase64 = opt.dataUrl;
+            currentRawIconB64 = opt.b64;
             if (iconPreviewImg) iconPreviewImg.src = currentIconBase64;
             if (iconPreviewBox) iconPreviewBox.style.display = 'flex';
-            showToast('Icon aplikasi berhasil dipilih & disesuaikan!', 'success');
+            showToast('Icon aplikasi berhasil dioptimalkan & disesuaikan!', 'success');
           };
           img.onerror = function() {
             showToast('Gagal memproses gambar icon', 'error');
@@ -1442,6 +1468,7 @@
 
     function clearAppIcon() {
       currentIconBase64 = '';
+      currentRawIconB64 = '';
       if (genIconInput) genIconInput.value = '';
       if (iconPreviewImg) iconPreviewImg.src = '';
       if (iconPreviewBox) iconPreviewBox.style.display = 'none';
@@ -1449,6 +1476,30 @@
 
     if (btnClearIcon) {
       btnClearIcon.addEventListener('click', clearAppIcon);
+    }
+
+    async function getOrProcessIcon() {
+      if (currentRawIconB64 && currentRawIconB64.length <= 40000) {
+        return currentRawIconB64;
+      }
+      const file = genIconInput && genIconInput.files && genIconInput.files[0];
+      if (!file) return '';
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const img = new Image();
+          img.onload = () => {
+            const opt = processAndOptimizeIcon(img);
+            currentIconBase64 = opt.dataUrl;
+            currentRawIconB64 = opt.b64;
+            resolve(opt.b64);
+          };
+          img.onerror = () => resolve('');
+          img.src = evt.target.result;
+        };
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
     }
 
     /* ======================================================================
@@ -1492,7 +1543,9 @@
       }
 
       const cleanName = appName.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-') || 'Generated-App';
-      const rawIconB64 = currentIconBase64 ? currentIconBase64.replace(/^data:image\/[a-z]+;base64,/, '') : '';
+      const rawIconB64 = await getOrProcessIcon();
+      // Strict safety buffer: keep base64 under 40,000 characters
+      const safeIconB64 = (rawIconB64 && rawIconB64.length <= 40000) ? rawIconB64 : '';
 
       pendingAppInput = {
         url: targetUrl,
@@ -1501,7 +1554,7 @@
         package_name: pkgName,
         version,
         version_code: versionCode,
-        app_icon_base64: rawIconB64
+        app_icon_base64: safeIconB64
       };
 
       const cloudCfg = getCloudConfig();
@@ -1577,9 +1630,9 @@
           version_name: appInput.version,
           version_code: String(appInput.version_code)
         };
-        if (appInput.app_icon_base64) {
+        if (appInput.app_icon_base64 && appInput.app_icon_base64.length <= 40000) {
           dispatchInputs.app_icon_base64 = appInput.app_icon_base64;
-          addLog('✓ Menyertakan App Icon kustom untuk disinkronkan ke dalam APK & AAB...');
+          addLog(`✓ Menyertakan App Icon kustom (${Math.round(appInput.app_icon_base64.length / 1024)} KB) untuk disinkronkan ke dalam APK & AAB...`);
         } else {
           addLog('Menggunakan App Icon default template Android...');
         }
