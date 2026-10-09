@@ -95,15 +95,29 @@ jobs:
           APP_ICON_B64="${{ github.event.inputs.app_icon_base64 }}"
           if [ -n "$APP_ICON_B64" ]; then
             echo "Decoding and synchronizing custom app icon..."
-            echo "$APP_ICON_B64" | base64 -d > /tmp/custom_icon.png
-            if [ -s /tmp/custom_icon.png ]; then
+            python3 -c "
+import sys, base64
+raw = sys.argv[1].strip()
+if raw:
+    try:
+        data = base64.b64decode(raw)
+        if data.startswith(b'\x89PNG\r\n\x1a\n') and len(data) > 50:
+            with open('/tmp/custom_icon.png', 'wb') as f:
+                f.write(data)
+            print('VALID_PNG')
+        else:
+            print('NOT_PNG')
+    except Exception as e:
+        print('DECODE_ERR:', e)
+" "$APP_ICON_B64"
+            if [ -f /tmp/custom_icon.png ]; then
               for dir in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
                 cp /tmp/custom_icon.png "app/src/main/res/$dir/ic_launcher.png"
                 cp /tmp/custom_icon.png "app/src/main/res/$dir/ic_launcher_round.png"
               done
               echo "✓ Custom App Icon successfully applied to all densities!"
             else
-              echo "Warning: Decoded icon file was empty; retaining default icon."
+              echo "Warning: Icon data invalid or empty; retaining default launcher icon."
             fi
           else
             echo "No custom icon provided; retaining default icon."
