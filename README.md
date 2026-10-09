@@ -96,10 +96,29 @@ Di `index.html`, klik **Download Source (.zip)**. Proyek ini sudah lengkap denga
 
 ---
 
-## 🔑 Login Default Admin
+## 🔐 Keamanan, Manajemen Pengguna & Dashboard Admin
 
-- **Email**: `admin@example.com`
-- **Password**: `admin123456`
+Untuk menjaga keamanan website agar **tidak bisa diakses atau didaftari oleh sembarang akun**, sistem kini dilengkapi sistem kontrol akses multi-level:
+
+1. **Tampilan Login Aman**: Kredensial default tidak lagi ditampilkan di halaman muka login publik.
+2. **Kredensial Default Awal (Harap Segera Diubah di Dashboard)**:
+   - **Email Awal**: `admin@example.com`
+   - **Password Awal**: `admin123456`
+3. **Pengaturan Kredensial Admin**:
+   - Masuk ke menu **Admin > Tab: 🔐 Profil & Password Admin**.
+   - Admin dapat mengganti nama, email resmi admin, serta memperbarui password baru kapan saja.
+4. **Pengaturan Masa Waktu Akses Pengguna**:
+   - Di tab **👥 Manajemen Akun & Akses**, admin dapat:
+     - Mengatur masa aktif akun: `7 Hari`, `30 Hari`, `90 Hari`, `365 Hari`, atau `Selamanya (Lifetime)`.
+     - Tombol cepat perpanjang akses: `+7 Hari`, `+30 Hari`, `+90 Hari`, `+1 Tahun`.
+     - Mengubah status akun: **Aktif**, **Menunggu Persetujuan (Pending)**, atau **Ditangguhkan (Suspended)**.
+     - Reset password akun pengguna secara langsung.
+5. **Kebijakan Pendaftaran Global**:
+   - Di tab **🛡️ Kebijakan Registrasi & Masa Aktif**, admin dapat:
+     - **Pendaftaran Terbuka**: Pengguna baru langsung aktif sesuai masa trial default.
+     - **Butuh Persetujuan (Approval)**: Pengguna baru berstatus *Pending* sampai diaktifkan oleh admin.
+     - **Pendaftaran Ditutup**: Form registrasi dimatikan total, hanya admin yang bisa membuat akun baru.
+     - **Wajib Kode Undangan (Invite Code)**: Membatasi pendaftaran hanya bagi yang memiliki kode akses resmi.
 
 ---
 
