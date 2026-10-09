@@ -44,8 +44,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Configure Android SDK Environment
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > android-template/local.properties
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -100,7 +104,11 @@ jobs:
       - name: Build Release APK and AAB
         run: |
           cd android-template
-          ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+          if command -v gradle >/dev/null 2>&1; then
+            gradle assembleRelease bundleRelease --no-daemon --stacktrace
+          else
+            ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+          fi
 
       - name: Prepare Release Artifacts
         id: prepare_files
