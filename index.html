@@ -2005,6 +2005,7 @@ dependencies {
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
+        android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="true">
 
         <activity
@@ -2025,14 +2026,18 @@ dependencies {
 
       files[`app/src/main/java/${pkgPath}/MainActivity.java`] = `package ${app.package_name};
 
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.media.MediaScannerConnection;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -2043,10 +2048,13 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
+import android.webkit.JavascriptInterface;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -2061,6 +2069,10 @@ import android.widget.Toast;
 
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+
 public class MainActivity extends Activity {
 
     private WebView webView;
@@ -2073,6 +2085,12 @@ public class MainActivity extends Activity {
 
     private ValueCallback<Uri[]> fileUploadCallback;
     private final static int FILE_CHOOSER_REQUEST_CODE = 1001;
+    private final static int STORAGE_PERMISSION_REQUEST_CODE = 1002;
+
+    private String pendingDownloadUrl;
+    private String pendingDownloadUserAgent;
+    private String pendingDownloadContentDisposition;
+    private String pendingDownloadMimetype;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -2176,40 +2194,223 @@ public class MainActivity extends Activity {
         }
     }
 
+    public class BlobDownloadInterface {
+        @JavascriptInterface
+        public void processBlobData(String base64Data, String mimeType, String filename) {
+            saveBase64ToDownloads(base64Data, mimeType, filename);
+        }
+
+        @JavascriptInterface
+        public void onBlobDownloadError(String errorMessage) {
+            runOnUiThread(() -> Toast.makeText(MainActivity.this, "Gagal mengunduh blob: " + errorMessage, Toast.LENGTH_SHORT).show());
+        }
+    }
+
     private void setupDownloadListener() {
         if (webView != null) {
             webView.setDownloadListener(new DownloadListener() {
                 @Override
                 public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
-                    try {
-                        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-                        if (mimetype != null && !mimetype.isEmpty()) request.setMimeType(mimetype);
-                        String cookies = CookieManager.getInstance().getCookie(url);
-                        if (cookies != null) request.addRequestHeader("cookie", cookies);
-                        if (userAgent != null) request.addRequestHeader("User-Agent", userAgent);
-                        String filename = URLUtil.guessFileName(url, contentDisposition, mimetype);
-                        request.setDescription("Mengunduh berkas...");
-                        request.setTitle(filename);
-                        request.allowScanningByMediaScanner();
-                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
+                    if (url == null || url.trim().isEmpty()) return;
 
-                        DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-                        if (dm != null) {
-                            dm.enqueue(request);
-                            Toast.makeText(MainActivity.this, "Memulai unduhan: " + filename, Toast.LENGTH_SHORT).show();
-                        }
-                    } catch (Exception e) {
-                        try {
-                            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                            startActivity(intent);
-                        } catch (Exception ex) {
-                            Toast.makeText(MainActivity.this, "Gagal mengunduh file", Toast.LENGTH_SHORT).show();
-                        }
+                    if (url.startsWith("blob:")) {
+                        handleBlobDownload(url, mimetype, contentDisposition);
+                    } else if (url.startsWith("data:")) {
+                        String filename = sanitizeFilename(URLUtil.guessFileName(url, contentDisposition, mimetype), mimetype);
+                        saveBase64ToDownloads(url, mimetype, filename);
+                    } else {
+                        handleHttpDownload(url, userAgent, contentDisposition, mimetype);
                     }
                 }
             });
         }
+    }
+
+    private void handleBlobDownload(String blobUrl, String mimeType, String contentDisposition) {
+        final String guessedName = sanitizeFilename(URLUtil.guessFileName(blobUrl, contentDisposition, mimeType), mimeType);
+        final String safeMime = (mimeType != null && !mimeType.isEmpty()) ? mimeType : "";
+
+        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Menyiapkan unduhan berkas...", Toast.LENGTH_SHORT).show());
+
+        String js = "javascript:(function() {" +
+                "  try {" +
+                "    var xhr = new XMLHttpRequest();" +
+                "    xhr.open('GET', '" + blobUrl + "', true);" +
+                "    xhr.responseType = 'blob';" +
+                "    xhr.onload = function() {" +
+                "      if (this.status === 200 || this.status === 0) {" +
+                "        var blob = this.response;" +
+                "        var reader = new FileReader();" +
+                "        reader.readAsDataURL(blob);" +
+                "        reader.onloadend = function() {" +
+                "          var finalMime = blob.type || '" + safeMime + "';" +
+                "          if (window.AndroidBlobDownloader) {" +
+                "            window.AndroidBlobDownloader.processBlobData(reader.result, finalMime, '" + guessedName + "');" +
+                "          }" +
+                "        };" +
+                "        reader.onerror = function() {" +
+                "          if (window.AndroidBlobDownloader) window.AndroidBlobDownloader.onBlobDownloadError('FileReader gagal membaca berkas');" +
+                "        };" +
+                "      } else {" +
+                "        if (window.AndroidBlobDownloader) window.AndroidBlobDownloader.onBlobDownloadError('HTTP ' + this.status);" +
+                "      }" +
+                "    };" +
+                "    xhr.onerror = function() {" +
+                "      if (window.AndroidBlobDownloader) window.AndroidBlobDownloader.onBlobDownloadError('Jaringan gagal memuat blob');" +
+                "    };" +
+                "    xhr.send();" +
+                "  } catch(e) {" +
+                "    if (window.AndroidBlobDownloader) window.AndroidBlobDownloader.onBlobDownloadError(e.message);" +
+                "  }" +
+                "})();";
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            webView.evaluateJavascript(js, null);
+        } else {
+            webView.loadUrl(js);
+        }
+    }
+
+    private void saveBase64ToDownloads(String dataUriOrBase64, String mimeType, String filename) {
+        new Thread(() -> {
+            try {
+                String cleanBase64 = dataUriOrBase64;
+                String detectedMime = mimeType;
+
+                if (dataUriOrBase64.contains(",")) {
+                    int commaIndex = dataUriOrBase64.indexOf(",");
+                    String header = dataUriOrBase64.substring(0, commaIndex);
+                    cleanBase64 = dataUriOrBase64.substring(commaIndex + 1);
+
+                    if (header.contains(":") && header.contains(";")) {
+                        detectedMime = header.substring(header.indexOf(":") + 1, header.indexOf(";"));
+                    }
+                }
+
+                final String finalFilename = sanitizeFilename(filename, detectedMime);
+                final String finalMime = (detectedMime != null && !detectedMime.isEmpty()) ? detectedMime : "application/octet-stream";
+
+                byte[] fileBytes = Base64.decode(cleanBase64, Base64.DEFAULT);
+
+                boolean success = false;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Downloads.DISPLAY_NAME, finalFilename);
+                    values.put(MediaStore.Downloads.MIME_TYPE, finalMime);
+                    values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+
+                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (uri != null) {
+                        try (OutputStream os = getContentResolver().openOutputStream(uri)) {
+                            if (os != null) {
+                                os.write(fileBytes);
+                                os.flush();
+                                success = true;
+                            }
+                        }
+                    }
+                } else {
+                    File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    if (!downloadDir.exists()) downloadDir.mkdirs();
+                    File destFile = new File(downloadDir, finalFilename);
+                    try (FileOutputStream fos = new FileOutputStream(destFile)) {
+                        fos.write(fileBytes);
+                        fos.flush();
+                        success = true;
+                    }
+                    MediaScannerConnection.scanFile(MainActivity.this, new String[]{destFile.getAbsolutePath()}, new String[]{finalMime}, null);
+                }
+
+                if (success) {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Berhasil diunduh: " + finalFilename, Toast.LENGTH_LONG).show());
+                } else {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Gagal menyimpan berkas ke folder Download", Toast.LENGTH_SHORT).show());
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Gagal mengunduh: " + (e.getMessage() != null ? e.getMessage() : "Kesalahan format berkas"), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+
+    private void handleHttpDownload(String url, String userAgent, String contentDisposition, String mimetype) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    pendingDownloadUrl = url;
+                    pendingDownloadUserAgent = userAgent;
+                    pendingDownloadContentDisposition = contentDisposition;
+                    pendingDownloadMimetype = mimetype;
+                    requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, STORAGE_PERMISSION_REQUEST_CODE);
+                    return;
+                }
+            }
+
+            Uri uri = Uri.parse(url);
+            DownloadManager.Request request = new DownloadManager.Request(uri);
+
+            String filename = sanitizeFilename(URLUtil.guessFileName(url, contentDisposition, mimetype), mimetype);
+
+            if (mimetype != null && !mimetype.isEmpty()) request.setMimeType(mimetype);
+
+            String cookies = CookieManager.getInstance().getCookie(url);
+            if (cookies != null && !cookies.isEmpty()) request.addRequestHeader("cookie", cookies);
+
+            if (userAgent != null && !userAgent.isEmpty()) request.addRequestHeader("User-Agent", userAgent);
+
+            request.setDescription("Mengunduh berkas...");
+            request.setTitle(filename);
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                request.allowScanningByMediaScanner();
+            }
+
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
+
+            DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            if (dm != null) {
+                dm.enqueue(request);
+                Toast.makeText(MainActivity.this, "Memulai unduhan: " + filename, Toast.LENGTH_SHORT).show();
+            } else {
+                throw new Exception("Layanan DownloadManager tidak aktif");
+            }
+        } catch (Exception e) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            } catch (Exception ex) {
+                Toast.makeText(MainActivity.this, "Gagal mengunduh: " + (e.getMessage() != null ? e.getMessage() : "Kesalahan sistem"), Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private String sanitizeFilename(String filename, String mimeType) {
+        if (filename == null || filename.trim().isEmpty() || filename.startsWith("downloadfile")) {
+            filename = "unduhan_" + System.currentTimeMillis();
+        }
+
+        filename = new File(filename).getName();
+        filename = filename.replaceAll("[\\\\/:*?\"<>|]", "_");
+
+        if (!filename.contains(".")) {
+            String ext = "";
+            if (mimeType != null) {
+                String lowerMime = mimeType.toLowerCase();
+                if (lowerMime.contains("pdf")) ext = ".pdf";
+                else if (lowerMime.contains("png")) ext = ".png";
+                else if (lowerMime.contains("jpeg") || lowerMime.contains("jpg")) ext = ".jpg";
+                else if (lowerMime.contains("webp")) ext = ".webp";
+                else if (lowerMime.contains("zip")) ext = ".zip";
+                else if (lowerMime.contains("csv")) ext = ".csv";
+                else if (lowerMime.contains("json")) ext = ".json";
+                else if (lowerMime.contains("vnd.android.package-archive")) ext = ".apk";
+            }
+            if (ext.isEmpty()) ext = ".bin";
+            filename += ext;
+        }
+
+        return filename;
     }
 
     private void setupWebView() {
@@ -2233,6 +2434,8 @@ public class MainActivity extends Activity {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         }
 
+        webView.addJavascriptInterface(new BlobDownloadInterface(), "AndroidBlobDownloader");
+
         webView.setWebViewClient(new CustomWebViewClient());
         webView.setWebChromeClient(new CustomWebChromeClient());
     }
@@ -2255,6 +2458,28 @@ public class MainActivity extends Activity {
             String scheme = uri.getScheme();
             String host = uri.getHost();
             if (scheme == null) return false;
+
+            if (scheme.equalsIgnoreCase("blob")) {
+                handleBlobDownload(uri.toString(), null, null);
+                return true;
+            }
+            if (scheme.equalsIgnoreCase("data")) {
+                String filename = sanitizeFilename(null, null);
+                saveBase64ToDownloads(uri.toString(), null, filename);
+                return true;
+            }
+
+            String path = uri.getPath();
+            if (path != null) {
+                String lowerPath = path.toLowerCase();
+                if (lowerPath.endsWith(".pdf") || lowerPath.endsWith(".apk") ||
+                    lowerPath.endsWith(".zip") || lowerPath.endsWith(".rar") ||
+                    lowerPath.endsWith(".xlsx") || lowerPath.endsWith(".docx") ||
+                    lowerPath.endsWith(".csv")) {
+                    handleHttpDownload(uri.toString(), view.getSettings().getUserAgentString(), null, null);
+                    return true;
+                }
+            }
 
             boolean isExternalScheme = scheme.equalsIgnoreCase("whatsapp") ||
                                        scheme.equalsIgnoreCase("tg") ||
@@ -2362,6 +2587,21 @@ public class MainActivity extends Activity {
             }
         }
         super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == STORAGE_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (pendingDownloadUrl != null) {
+                    handleHttpDownload(pendingDownloadUrl, pendingDownloadUserAgent, pendingDownloadContentDisposition, pendingDownloadMimetype);
+                    pendingDownloadUrl = null;
+                }
+            } else {
+                Toast.makeText(this, "Izin penyimpanan dibutuhkan untuk mengunduh berkas", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     @Override
