@@ -473,6 +473,110 @@
       padding: 1.5rem;
     }
 
+    /* Admin Tabs & Sub-navigation */
+    .admin-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 2px solid var(--border-color);
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+    }
+
+    .admin-tab-btn {
+      background: transparent;
+      border: none;
+      padding: 0.7rem 1.1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -0.35rem;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .admin-tab-btn:hover {
+      color: var(--primary);
+    }
+
+    .admin-tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    /* Filter Pills */
+    .filter-pills {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .filter-pill {
+      background: #F1F5F9;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-pill:hover {
+      background: #E2E8F0;
+      color: var(--text-main);
+    }
+
+    .filter-pill.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #FFFFFF;
+    }
+
+    /* User Row Card */
+    .user-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1.15rem;
+      margin-bottom: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      transition: border-color 0.15s;
+    }
+
+    .user-card:hover {
+      border-color: #CBD5E1;
+    }
+
+    .preset-btn {
+      padding: 0.35rem 0.65rem;
+      font-size: 0.775rem;
+      font-weight: 600;
+      background: #F1F5F9;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-main);
+      transition: all 0.15s;
+    }
+
+    .preset-btn:hover {
+      background: var(--primary-light);
+      color: var(--primary);
+      border-color: #93C5FD;
+    }
+
     @media (max-width: 640px) {
       .app-item-header {
         flex-direction: column;
@@ -480,6 +584,10 @@
       }
       .nav-links {
         gap: 0.6rem;
+      }
+      .user-card {
+        flex-direction: column;
+        align-items: flex-start;
       }
     }
   </style>
@@ -513,9 +621,11 @@
 
         <div class="card">
           <form id="form-login">
+            <div id="login-alert-box" style="display: none; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; font-weight: 500;"></div>
+
             <div class="form-group">
               <label for="login-email">Email</label>
-              <input type="email" id="login-email" required placeholder="admin@example.com" autocomplete="email">
+              <input type="email" id="login-email" required placeholder="nama@domain.com" autocomplete="email">
             </div>
 
             <div class="form-group">
@@ -527,13 +637,9 @@
               Login
             </button>
           </form>
-
-          <div style="margin-top: 1rem; padding: 0.75rem; background: #F1F5F9; border-radius: 8px; font-size: 0.8rem; color: var(--text-muted);">
-            <strong>Default Admin:</strong> <code>admin@example.com</code> / <code>admin123456</code>
-          </div>
         </div>
 
-        <div class="auth-footer">
+        <div class="auth-footer" id="login-footer-text">
           Belum punya akun? <a onclick="navigateTo('register')">Register</a>
         </div>
       </div>
@@ -550,6 +656,11 @@
         </div>
 
         <div class="card">
+          <div id="register-closed-alert" style="display: none; padding: 1.25rem; background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; color: #991B1B; font-size: 0.9rem; text-align: center; margin-bottom: 1rem;">
+            <strong>Pendaftaran Publik Ditutup</strong>
+            <p style="margin-top: 0.5rem; font-size: 0.825rem; color: #7F1D1D;">Saat ini pendaftaran akun baru hanya dapat dibuat oleh Administrator. Silakan hubungi Administrator untuk mendapatkan akses.</p>
+          </div>
+
           <form id="form-register">
             <div class="form-group">
               <label for="reg-name">Nama Lengkap</label>
@@ -569,6 +680,12 @@
             <div class="form-group">
               <label for="reg-confirm">Konfirmasi Password</label>
               <input type="password" id="reg-confirm" required minlength="6" placeholder="Ulangi password" autocomplete="new-password">
+            </div>
+
+            <div class="form-group" id="group-reg-invite" style="display: none;">
+              <label for="reg-invite-code">Kode Undangan / Akses *</label>
+              <input type="text" id="reg-invite-code" placeholder="Masukkan kode undangan resmi">
+              <div class="form-hint">Diperlukan kode undangan resmi untuk mendaftar.</div>
             </div>
 
             <button type="submit" id="btn-register" class="btn btn-primary btn-block">
@@ -592,9 +709,21 @@
           <h1 style="font-size: 1.6rem; font-weight: 700;">Hello, <span id="dash-user-name">User</span></h1>
           <p class="card-subtitle">Kelola aplikasi Android WebView hasil generate Anda</p>
         </div>
-        <button class="btn btn-primary" onclick="navigateTo('generate')">
+        <button class="btn btn-primary" id="btn-dash-generate" onclick="navigateTo('generate')">
           + Generate New App
         </button>
+      </div>
+
+      <!-- Access Period Banner -->
+      <div id="dash-access-banner" class="card" style="margin-bottom: 1.5rem; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: #F8FAFC; border: 1px solid #E2E8F0;">
+        <div style="display: flex; align-items: center; gap: 0.85rem;">
+          <div id="dash-access-icon" style="font-size: 1.5rem;">⏱️</div>
+          <div>
+            <div style="font-size: 0.775rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Masa Waktu Akses</div>
+            <div id="dash-access-text" style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-top: 0.15rem;">-</div>
+          </div>
+        </div>
+        <span id="dash-access-badge" class="badge badge-success">Aktif</span>
       </div>
 
       <!-- Stats Grid -->
@@ -755,7 +884,7 @@
     <section id="view-admin" style="display: none;">
       <div style="margin-bottom: 1.5rem;">
         <h1 style="font-size: 1.6rem; font-weight: 700;">Admin Dashboard</h1>
-        <p class="card-subtitle">Pengawasan seluruh pengguna, aplikasi, dan status build</p>
+        <p class="card-subtitle">Pengawasan seluruh pengguna, kredensial admin, kebijakan akses, dan aplikasi</p>
       </div>
 
       <!-- Admin Stats Grid -->
@@ -765,35 +894,320 @@
           <div class="stat-value" id="admin-stat-users">0</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Total Apps</div>
+          <div class="stat-label">User Aktif</div>
+          <div class="stat-value" id="admin-stat-active" style="color: var(--success);">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pending Approval</div>
+          <div class="stat-value" id="admin-stat-pending" style="color: var(--warning);">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Expired / Suspended</div>
+          <div class="stat-value" id="admin-stat-expired" style="color: var(--danger);">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Aplikasi</div>
           <div class="stat-value" id="admin-stat-apps">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Total Builds</div>
-          <div class="stat-value" id="admin-stat-builds">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Successful Builds</div>
-          <div class="stat-value" id="admin-stat-success" style="color: var(--success);">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Failed Builds</div>
-          <div class="stat-value" id="admin-stat-failed" style="color: var(--danger);">0</div>
         </div>
       </div>
 
-      <!-- Users List -->
-      <div style="margin-top: 2rem;">
-        <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Daftar Pengguna (<span id="admin-users-count">0</span>)</h2>
+      <!-- Admin Sub Tabs -->
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" data-tab="users" onclick="switchAdminTab('users')">
+          👥 Manajemen Akun & Akses (<span id="admin-tab-users-badge">0</span>)
+        </button>
+        <button class="admin-tab-btn" data-tab="my-account" onclick="switchAdminTab('my-account')">
+          🔐 Profil & Password Admin
+        </button>
+        <button class="admin-tab-btn" data-tab="policy" onclick="switchAdminTab('policy')">
+          🛡️ Kebijakan Registrasi & Masa Aktif
+        </button>
+        <button class="admin-tab-btn" data-tab="apps" onclick="switchAdminTab('apps')">
+          📱 Semua Aplikasi (<span id="admin-tab-apps-badge">0</span>)
+        </button>
+      </div>
+
+      <!-- TAB 1: USERS & ACCESS MANAGEMENT -->
+      <div id="admin-tab-users">
+        <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; flex: 1;">
+              <input type="text" id="admin-user-search" placeholder="🔍 Cari nama atau email..." style="max-width: 280px;" oninput="renderAdminUsersList()">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openAddUserModal()">
+              + Tambah Pengguna / Admin Baru
+            </button>
+          </div>
+
+          <div class="filter-pills" style="margin-top: 1rem; margin-bottom: 0;">
+            <button class="filter-pill active" data-filter="all" onclick="filterAdminUsers('all')">Semua (<span id="filter-count-all">0</span>)</button>
+            <button class="filter-pill" data-filter="active" onclick="filterAdminUsers('active')">🟢 Aktif (<span id="filter-count-active">0</span>)</button>
+            <button class="filter-pill" data-filter="pending" onclick="filterAdminUsers('pending')">🟡 Pending (<span id="filter-count-pending">0</span>)</button>
+            <button class="filter-pill" data-filter="expired" onclick="filterAdminUsers('expired')">🔴 Expired (<span id="filter-count-expired">0</span>)</button>
+            <button class="filter-pill" data-filter="suspended" onclick="filterAdminUsers('suspended')">⛔ Suspended (<span id="filter-count-suspended">0</span>)</button>
+            <button class="filter-pill" data-filter="admin" onclick="filterAdminUsers('admin')">👑 Admin (<span id="filter-count-admin">0</span>)</button>
+          </div>
+        </div>
+
         <div id="admin-users-container"></div>
       </div>
 
-      <!-- All Apps List -->
-      <div style="margin-top: 2.5rem;">
-        <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Semua Aplikasi (<span id="admin-apps-count">0</span>)</h2>
+      <!-- TAB 2: MY ADMIN CREDENTIALS -->
+      <div id="admin-tab-my-account" style="display: none;">
+        <div class="card" style="max-width: 580px;">
+          <div class="card-header">
+            <h3 class="card-title">🔐 Pengaturan Akun Admin</h3>
+            <p class="card-subtitle">Ubah kredensial email dan password admin agar aman dari akses tidak berizin.</p>
+          </div>
+
+          <form id="form-admin-profile" onsubmit="saveAdminProfile(event)">
+            <div class="form-group">
+              <label for="admin-prof-name">Nama Administrator *</label>
+              <input type="text" id="admin-prof-name" required placeholder="Administrator">
+            </div>
+
+            <div class="form-group">
+              <label for="admin-prof-email">Email Admin *</label>
+              <input type="email" id="admin-prof-email" required placeholder="admin@domain.com">
+              <div class="form-hint">Email ini digunakan untuk login sebagai administrator sistem.</div>
+            </div>
+
+            <div style="margin: 1.5rem 0 1rem 0; border-top: 1px dashed var(--border-color); padding-top: 1.25rem;">
+              <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem;">Ubah Password Admin</h4>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Kosongkan bila tidak ingin mengubah password saat ini.</p>
+
+              <div class="form-group">
+                <label for="admin-prof-newpass">Password Baru</label>
+                <input type="password" id="admin-prof-newpass" minlength="6" placeholder="Minimal 6 karakter" autocomplete="new-password">
+              </div>
+
+              <div class="form-group">
+                <label for="admin-prof-confirmpass">Konfirmasi Password Baru</label>
+                <input type="password" id="admin-prof-confirmpass" minlength="6" placeholder="Ulangi password baru" autocomplete="new-password">
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+              💾 Simpan Kredensial Admin
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- TAB 3: REGISTRATION & ACCESS POLICY -->
+      <div id="admin-tab-policy" style="display: none;">
+        <div class="card" style="max-width: 620px;">
+          <div class="card-header">
+            <h3 class="card-title">🛡️ Kebijakan Registrasi & Masa Akses</h3>
+            <p class="card-subtitle">Atur batasan pendaftaran publik dan masa waktu aktif aplikasi untuk pengguna baru.</p>
+          </div>
+
+          <form id="form-admin-policy" onsubmit="saveAdminPolicy(event)">
+            <div class="form-group">
+              <label>Status Pendaftaran Akun Publik</label>
+              <div style="display: flex; flex-direction: column; gap: 0.65rem; margin-top: 0.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.6rem; font-weight: normal; cursor: pointer;">
+                  <input type="radio" name="reg-mode" value="open" checked>
+                  <div>
+                    <strong>Pendaftaran Terbuka (Langsung Aktif)</strong>
+                    <div class="form-hint">Pengguna baru langsung mendapatkan akun aktif sesuai masa trial.</div>
+                  </div>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.6rem; font-weight: normal; cursor: pointer;">
+                  <input type="radio" name="reg-mode" value="approval">
+                  <div>
+                    <strong>Butuh Persetujuan Admin (Pending Approval)</strong>
+                    <div class="form-hint">Pendaftar baru berstatus Pending hingga diaktifkan oleh Admin secara manual.</div>
+                  </div>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.6rem; font-weight: normal; cursor: pointer;">
+                  <input type="radio" name="reg-mode" value="closed">
+                  <div>
+                    <strong>Pendaftaran Ditutup (Private / Hanya Admin)</strong>
+                    <div class="form-hint">Form register dimatikan. Hanya Admin yang dapat menambahkan akun melalui dashboard.</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 1.5rem;">
+              <label for="policy-trial-days">Masa Waktu Akses Default untuk Pendaftar Baru</label>
+              <select id="policy-trial-days">
+                <option value="7">7 Hari (Trial Seminggu)</option>
+                <option value="14">14 Hari (Trial Dua Minggu)</option>
+                <option value="30" selected>30 Hari (Trial 1 Bulan)</option>
+                <option value="90">90 Hari (3 Bulan)</option>
+                <option value="365">365 Hari (1 Tahun)</option>
+                <option value="0">Akses Selamanya (Lifetime / Tanpa Batas Waktu)</option>
+              </select>
+              <div class="form-hint">Durasi aktif awal yang diberikan saat pengguna pertama kali mendaftar.</div>
+            </div>
+
+            <div class="form-group" style="margin-top: 1.5rem;">
+              <label style="display: flex; align-items: center; gap: 0.6rem; font-weight: 600; cursor: pointer;">
+                <input type="checkbox" id="policy-invite-enabled" onchange="toggleInviteCodeField()">
+                Wajibkan Kode Undangan / Akses Khusus
+              </label>
+              <div id="policy-invite-container" style="display: none; margin-top: 0.75rem;">
+                <label for="policy-invite-code">Kode Undangan Resmi</label>
+                <input type="text" id="policy-invite-code" placeholder="Misal: VIP-2026 atau PROMO-APP">
+                <div class="form-hint">Hanya pengguna yang mengetahui kode ini yang dapat mendaftar.</div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 1.25rem;">
+              💾 Terapkan Kebijakan Akses
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- TAB 4: ALL APPS -->
+      <div id="admin-tab-apps" style="display: none;">
+        <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Semua Aplikasi Pengguna</h2>
         <div id="admin-apps-container"></div>
       </div>
     </section>
+
+    <!-- Modal: Tambah Pengguna / Admin Baru -->
+    <div class="modal-overlay" id="addUserModal">
+      <div class="modal-card" style="max-width: 520px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 class="card-title">➕ Tambah Pengguna / Admin Baru</h3>
+          <button class="btn btn-secondary btn-sm" onclick="closeAddUserModal()">✕</button>
+        </div>
+
+        <form id="form-add-user" onsubmit="saveNewUser(event)">
+          <div class="form-group">
+            <label for="add-user-name">Nama Lengkap *</label>
+            <input type="text" id="add-user-name" required placeholder="Nama pengguna">
+          </div>
+
+          <div class="form-group">
+            <label for="add-user-email">Email *</label>
+            <input type="email" id="add-user-email" required placeholder="user@domain.com">
+          </div>
+
+          <div class="form-group">
+            <label for="add-user-pass">Password *</label>
+            <input type="password" id="add-user-pass" required minlength="6" placeholder="Minimal 6 karakter">
+          </div>
+
+          <div class="form-group">
+            <label for="add-user-role">Peran (Role) *</label>
+            <select id="add-user-role" onchange="onAddUserRoleChange()">
+              <option value="user" selected>Pengguna Biasa (User)</option>
+              <option value="admin">Administrator (Admin)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="add-user-period">Masa Waktu Akses *</label>
+            <select id="add-user-period" onchange="onAddUserPeriodChange()">
+              <option value="7">7 Hari (Trial Seminggu)</option>
+              <option value="30" selected>30 Hari (1 Bulan)</option>
+              <option value="90">90 Hari (3 Bulan)</option>
+              <option value="180">180 Hari (6 Bulan)</option>
+              <option value="365">365 Hari (1 Tahun)</option>
+              <option value="lifetime">Akses Selamanya (Lifetime)</option>
+              <option value="custom">Pilih Tanggal Kustom...</option>
+            </select>
+            <div id="add-user-custom-date-box" style="display: none; margin-top: 0.5rem;">
+              <input type="date" id="add-user-custom-date">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="add-user-status">Status Akun</label>
+            <select id="add-user-status">
+              <option value="active" selected>Aktif</option>
+              <option value="pending">Menunggu Persetujuan (Pending)</option>
+              <option value="suspended">Ditangguhkan (Suspended)</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeAddUserModal()">Batal</button>
+            <button type="submit" class="btn btn-primary" style="flex: 1;">Simpan Akun Baru</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Edit Pengguna & Pengaturan Masa Akses -->
+    <div class="modal-overlay" id="editUserModal">
+      <div class="modal-card" style="max-width: 540px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 class="card-title" id="editUserModalTitle">⚙️ Edit Akun & Masa Akses</h3>
+          <button class="btn btn-secondary btn-sm" onclick="closeEditUserModal()">✕</button>
+        </div>
+
+        <form id="form-edit-user" onsubmit="saveEditUser(event)">
+          <input type="hidden" id="edit-user-id">
+
+          <div class="form-group">
+            <label for="edit-user-name">Nama Lengkap *</label>
+            <input type="text" id="edit-user-name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-user-email">Email *</label>
+            <input type="email" id="edit-user-email" required>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-user-role">Peran (Role)</label>
+            <select id="edit-user-role">
+              <option value="user">Pengguna Biasa (User)</option>
+              <option value="admin">Administrator (Admin)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-user-status">Status Akun</label>
+            <select id="edit-user-status">
+              <option value="active">🟢 Aktif</option>
+              <option value="pending">🟡 Menunggu Persetujuan (Pending)</option>
+              <option value="suspended">⛔ Ditangguhkan (Suspended)</option>
+            </select>
+          </div>
+
+          <!-- Access Expiration Controls -->
+          <div style="background: #F8FAFC; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
+              ⏱️ Masa Waktu Akses
+            </div>
+            <div id="edit-user-current-access-display" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+              Status: -
+            </div>
+
+            <label style="font-size: 0.8rem; margin-bottom: 0.3rem;">Perpanjang Akses Cepat:</label>
+            <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+              <button type="button" class="preset-btn" onclick="quickExtendAccess(7)">+7 Hari</button>
+              <button type="button" class="preset-btn" onclick="quickExtendAccess(30)">+30 Hari</button>
+              <button type="button" class="preset-btn" onclick="quickExtendAccess(90)">+90 Hari</button>
+              <button type="button" class="preset-btn" onclick="quickExtendAccess(365)">+1 Tahun</button>
+              <button type="button" class="preset-btn" onclick="setLifetimeAccess()">♾️ Selamanya</button>
+            </div>
+
+            <label for="edit-user-access-date" style="font-size: 0.8rem; margin-bottom: 0.3rem;">Atur Tanggal Kedaluwarsa Spesifik:</label>
+            <input type="date" id="edit-user-access-date">
+            <div class="form-hint">Kosongkan jika ingin memberi akses selamanya (Lifetime).</div>
+          </div>
+
+          <!-- Reset Password -->
+          <div class="form-group">
+            <label for="edit-user-newpass">Reset Password Pengguna</label>
+            <input type="password" id="edit-user-newpass" minlength="6" placeholder="Kosongkan jika tidak ingin mengubah password">
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()">Batal</button>
+            <button type="submit" class="btn btn-primary" style="flex: 1;">💾 Simpan Perubahan</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
   </main>
 
@@ -1027,21 +1441,139 @@
 
       init() {
         const users = this.get('users', []);
-        if (!users.some(u => u.email === 'admin@example.com')) {
+        // Seed initial admin if none exists
+        if (!users.some(u => u.role === 'admin')) {
           users.push({
             id: 'admin-001',
             name: 'Administrator',
             email: 'admin@example.com',
             password: 'admin123456',
             role: 'admin',
+            status: 'active',
+            access_until: null,
             created_at: new Date().toISOString()
           });
           this.set('users', users);
+        } else {
+          // Normalize existing users
+          let changed = false;
+          users.forEach(u => {
+            if (!u.status) { u.status = 'active'; changed = true; }
+            if (u.access_until === undefined) { u.access_until = u.role === 'admin' ? null : null; changed = true; }
+          });
+          if (changed) this.set('users', users);
+        }
+
+        // Global security & registration policy
+        const policy = this.get('access_policy', null);
+        if (!policy) {
+          this.set('access_policy', {
+            registration_mode: 'open', // 'open' | 'approval' | 'closed'
+            default_trial_days: 30,
+            invite_code_enabled: false,
+            invite_code: ''
+          });
         }
       }
     };
 
     DB.init();
+
+    /* ======================================================================
+       ACCOUNT ACCESS & EXPIRATION HELPERS
+       ====================================================================== */
+    function getAccountAccessStatus(user) {
+      if (!user) return { status: 'none', label: '-', badgeClass: 'badge-secondary', isExpired: true };
+
+      if (user.status === 'suspended') {
+        return { status: 'suspended', label: 'Ditangguhkan (Suspended)', badgeClass: 'badge-danger', isExpired: true };
+      }
+      if (user.status === 'pending') {
+        return { status: 'pending', label: 'Menunggu Persetujuan (Pending)', badgeClass: 'badge-warning', isExpired: true };
+      }
+
+      // Admin or lifetime
+      if (!user.access_until || user.access_until === 'lifetime') {
+        return {
+          status: 'lifetime',
+          label: user.role === 'admin' ? 'Selamanya (Administrator)' : 'Akses Selamanya (Lifetime) ♾️',
+          badgeClass: 'badge-success',
+          isExpired: false,
+          daysLeft: Infinity
+        };
+      }
+
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      const parts = String(user.access_until).split('-');
+      if (parts.length < 3) {
+        return { status: 'lifetime', label: 'Akses Selamanya ♾️', badgeClass: 'badge-success', isExpired: false, daysLeft: Infinity };
+      }
+
+      const expDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      const diffMs = expDate.getTime() - todayStart.getTime();
+      const daysLeft = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+      if (daysLeft < 0) {
+        return {
+          status: 'expired',
+          label: `Kedaluwarsa sejak ${formatDateShort(user.access_until)}`,
+          badgeClass: 'badge-danger',
+          isExpired: true,
+          daysLeft
+        };
+      } else if (daysLeft === 0) {
+        return {
+          status: 'expiring_today',
+          label: `Berakhir Hari Ini (${formatDateShort(user.access_until)})`,
+          badgeClass: 'badge-warning',
+          isExpired: false,
+          daysLeft: 0
+        };
+      } else {
+        return {
+          status: 'active',
+          label: `Aktif s.d. ${formatDateShort(user.access_until)} (Sisa ${daysLeft} hari)`,
+          badgeClass: 'badge-success',
+          isExpired: false,
+          daysLeft
+        };
+      }
+    }
+
+    function formatDateShort(dateStr) {
+      if (!dateStr || dateStr === 'lifetime') return 'Selamanya (Lifetime)';
+      try {
+        const parts = String(dateStr).split('-');
+        if (parts.length === 3) {
+          const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
+    function calculateDateOffset(days, fromDateStr = null) {
+      let base = new Date();
+      if (fromDateStr && fromDateStr !== 'lifetime') {
+        const parts = String(fromDateStr).split('-');
+        if (parts.length === 3) {
+          const parsed = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          if (parsed.getTime() > base.getTime()) {
+            base = parsed;
+          }
+        }
+      }
+      base.setDate(base.getDate() + parseInt(days));
+      const y = base.getFullYear();
+      const m = String(base.getMonth() + 1).padStart(2, '0');
+      const d = String(base.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
 
     let currentUser = DB.get('current_user', null);
     let lastGeneratedData = null;
@@ -1049,7 +1581,53 @@
     /* ======================================================================
        3. NAVIGATION & UI STATE
        ====================================================================== */
+    function checkRegistrationPolicyUI() {
+      const policy = DB.get('access_policy', {
+        registration_mode: 'open',
+        default_trial_days: 30,
+        invite_code_enabled: false,
+        invite_code: ''
+      });
+
+      const closedAlert = document.getElementById('register-closed-alert');
+      const formRegister = document.getElementById('form-register');
+      const inviteGroup = document.getElementById('group-reg-invite');
+
+      if (policy.registration_mode === 'closed') {
+        if (closedAlert) closedAlert.style.display = 'block';
+        if (formRegister) formRegister.style.display = 'none';
+      } else {
+        if (closedAlert) closedAlert.style.display = 'none';
+        if (formRegister) formRegister.style.display = 'block';
+
+        if (inviteGroup) {
+          inviteGroup.style.display = policy.invite_code_enabled ? 'block' : 'none';
+          const input = document.getElementById('reg-invite-code');
+          if (input) input.required = !!policy.invite_code_enabled;
+        }
+      }
+
+      const loginFooter = document.getElementById('login-footer-text');
+      if (loginFooter) {
+        if (policy.registration_mode === 'closed') {
+          loginFooter.innerHTML = '<span style="color: var(--text-muted);">Pendaftaran akun publik saat ini ditutup oleh Administrator.</span>';
+        } else {
+          loginFooter.innerHTML = 'Belum punya akun? <a onclick="navigateTo(\'register\')">Register</a>';
+        }
+      }
+    }
+
     function navigateTo(viewName) {
+      // Refresh current user data from DB
+      if (currentUser) {
+        const users = DB.get('users', []);
+        const freshUser = users.find(u => u.id === currentUser.id);
+        if (freshUser) {
+          currentUser = freshUser;
+          DB.set('current_user', freshUser);
+        }
+      }
+
       if (!currentUser && (viewName === 'dashboard' || viewName === 'generate' || viewName === 'admin')) {
         viewName = 'login';
       }
@@ -1058,6 +1636,19 @@
       }
       if (viewName === 'admin' && currentUser && currentUser.role !== 'admin') {
         viewName = 'dashboard';
+      }
+
+      // Block expired users from generating apps
+      if (viewName === 'generate' && currentUser && currentUser.role !== 'admin') {
+        const access = getAccountAccessStatus(currentUser);
+        if (access.isExpired) {
+          showToast('Masa waktu akses Anda telah berakhir. Silakan perpanjang akun.', 'error');
+          viewName = 'dashboard';
+        }
+      }
+
+      if (viewName === 'register' || viewName === 'login') {
+        checkRegistrationPolicyUI();
       }
 
       const views = ['login', 'register', 'dashboard', 'generate', 'admin'];
@@ -1118,10 +1709,58 @@
       const password = document.getElementById('login-password').value;
 
       const users = DB.get('users', []);
-      const user = users.find(u => u.email === email && u.password === password);
+      const user = users.find(u => u.email.toLowerCase() === email && u.password === password);
+
+      const alertBox = document.getElementById('login-alert-box');
+      if (alertBox) alertBox.style.display = 'none';
 
       if (!user) {
         showToast('Email atau password salah.', 'error');
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = '#FEF2F2';
+          alertBox.style.color = '#991B1B';
+          alertBox.style.border = '1px solid #FCA5A5';
+          alertBox.textContent = 'Email atau password yang Anda masukkan salah.';
+        }
+        return;
+      }
+
+      // Check account status and access expiration
+      const access = getAccountAccessStatus(user);
+      if (access.status === 'suspended') {
+        showToast('Akun Anda telah dinonaktifkan oleh Administrator.', 'error');
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = '#FEF2F2';
+          alertBox.style.color = '#991B1B';
+          alertBox.style.border = '1px solid #FCA5A5';
+          alertBox.textContent = '⛔ Akun Anda dinonaktifkan oleh Administrator. Silakan hubungi admin.';
+        }
+        return;
+      }
+
+      if (access.status === 'pending') {
+        showToast('Akun Anda masih menunggu persetujuan Administrator.', 'warning');
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = '#FFFBEB';
+          alertBox.style.color = '#92400E';
+          alertBox.style.border = '1px solid #FDE68A';
+          alertBox.textContent = '🟡 Akun Anda sedang menunggu persetujuan dari Administrator.';
+        }
+        return;
+      }
+
+      if (access.isExpired) {
+        showToast(`Masa akses akun Anda telah berakhir pada ${formatDateShort(user.access_until)}.`, 'error');
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = '#FEF2F2';
+          alertBox.style.color = '#991B1B';
+          alertBox.style.border = '1px solid #FCA5A5';
+          alertBox.textContent = `🔴 Masa akses akun Anda telah berakhir pada ${formatDateShort(user.access_until)}. Silakan hubungi Administrator untuk perpanjangan masa akses.`;
+        }
         return;
       }
 
@@ -1133,6 +1772,26 @@
 
     document.getElementById('form-register').addEventListener('submit', (e) => {
       e.preventDefault();
+      const policy = DB.get('access_policy', {
+        registration_mode: 'open',
+        default_trial_days: 30,
+        invite_code_enabled: false,
+        invite_code: ''
+      });
+
+      if (policy.registration_mode === 'closed') {
+        showToast('Pendaftaran publik sedang ditutup oleh Administrator.', 'error');
+        return;
+      }
+
+      if (policy.invite_code_enabled && policy.invite_code) {
+        const entered = document.getElementById('reg-invite-code')?.value.trim();
+        if (entered !== policy.invite_code) {
+          showToast('Kode undangan / akses tidak valid.', 'error');
+          return;
+        }
+      }
+
       const name = document.getElementById('reg-name').value.trim();
       const email = document.getElementById('reg-email').value.trim().toLowerCase();
       const password = document.getElementById('reg-password').value;
@@ -1144,10 +1803,17 @@
       }
 
       const users = DB.get('users', []);
-      if (users.some(u => u.email === email)) {
+      if (users.some(u => u.email.toLowerCase() === email)) {
         showToast('Email sudah terdaftar.', 'error');
         return;
       }
+
+      let accessUntil = null;
+      if (policy.default_trial_days && parseInt(policy.default_trial_days) > 0) {
+        accessUntil = calculateDateOffset(policy.default_trial_days);
+      }
+
+      const initialStatus = (policy.registration_mode === 'approval') ? 'pending' : 'active';
 
       const newUser = {
         id: 'user-' + Date.now(),
@@ -1155,16 +1821,31 @@
         email,
         password,
         role: 'user',
+        status: initialStatus,
+        access_until: accessUntil,
         created_at: new Date().toISOString()
       };
 
       users.push(newUser);
       DB.set('users', users);
 
-      currentUser = newUser;
-      DB.set('current_user', newUser);
-      showToast('Registrasi berhasil!', 'success');
-      navigateTo('dashboard');
+      if (initialStatus === 'pending') {
+        showToast('Pendaftaran berhasil! Akun Anda menunggu persetujuan Administrator.', 'info');
+        navigateTo('login');
+        const alertBox = document.getElementById('login-alert-box');
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = '#FFFBEB';
+          alertBox.style.color = '#92400E';
+          alertBox.style.border = '1px solid #FDE68A';
+          alertBox.textContent = '🟡 Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan dari Administrator sebelum dapat digunakan.';
+        }
+      } else {
+        currentUser = newUser;
+        DB.set('current_user', newUser);
+        showToast('Registrasi berhasil! Selamat datang.', 'success');
+        navigateTo('dashboard');
+      }
     });
 
     /* ======================================================================
@@ -1174,8 +1855,35 @@
       if (!currentUser) return;
       document.getElementById('dash-user-name').textContent = currentUser.name;
 
+      // Access status display
+      const access = getAccountAccessStatus(currentUser);
+      const accessBadge = document.getElementById('dash-access-badge');
+      const accessText = document.getElementById('dash-access-text');
+      const accessIcon = document.getElementById('dash-access-icon');
+      const btnGen = document.getElementById('btn-dash-generate');
+
+      if (accessBadge && accessText) {
+        accessBadge.className = `badge ${access.badgeClass}`;
+        accessBadge.textContent = access.isExpired ? 'Kedaluwarsa' : (access.status === 'lifetime' ? 'Lifetime' : 'Aktif');
+        accessText.textContent = access.label;
+        if (accessIcon) {
+          accessIcon.textContent = access.isExpired ? '⚠️' : (access.status === 'lifetime' ? '♾️' : '⏱️');
+        }
+      }
+
+      if (btnGen) {
+        if (access.isExpired && currentUser.role !== 'admin') {
+          btnGen.disabled = true;
+          btnGen.style.opacity = '0.5';
+          btnGen.title = 'Masa waktu akses telah berakhir. Hubungi Admin.';
+        } else {
+          btnGen.disabled = false;
+          btnGen.style.opacity = '1';
+          btnGen.title = '';
+        }
+      }
+
       const allApps = DB.get('apps', []);
-      // Multi-tenant isolation: User only sees their own apps
       const userApps = allApps.filter(a => a.user_id === currentUser.id);
 
       const successful = userApps.filter(a => a.status === 'Success').length;
@@ -1188,11 +1896,12 @@
           <div class="card" style="text-align: center; padding: 3rem 1rem;">
             <p style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem;">Belum ada aplikasi yang dibuat</p>
             <p class="card-subtitle" style="margin-bottom: 1.5rem;">Buat aplikasi Android native WebView pertama Anda sekarang.</p>
-            <button class="btn btn-primary" onclick="navigateTo('generate')">+ Generate New App</button>
+            <button class="btn btn-primary" onclick="navigateTo('generate')" ${access.isExpired && currentUser.role !== 'admin' ? 'disabled' : ''}>+ Generate New App</button>
           </div>
         `;
         return;
       }
+
 
       c.innerHTML = userApps.map(app => {
         let badgeClass = 'badge-secondary';
@@ -2875,8 +3584,29 @@ jobs:
     }
 
     /* ======================================================================
-       8. ADMIN DASHBOARD HANDLER
+       8. ADMIN DASHBOARD & USER MANAGEMENT HANDLER
        ====================================================================== */
+    let currentAdminTab = 'users';
+    let adminUsersFilter = 'all';
+
+    function switchAdminTab(tabName) {
+      currentAdminTab = tabName;
+      const tabs = ['users', 'my-account', 'policy', 'apps'];
+      tabs.forEach(t => {
+        const el = document.getElementById('admin-tab-' + t);
+        if (el) el.style.display = (t === tabName) ? 'block' : 'none';
+      });
+
+      document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
+      });
+
+      if (tabName === 'users') renderAdminUsersList();
+      if (tabName === 'my-account') loadAdminProfileForm();
+      if (tabName === 'policy') loadAdminPolicyForm();
+      if (tabName === 'apps') renderAdminAppsList();
+    }
+
     function loadAdmin() {
       if (!currentUser || currentUser.role !== 'admin') {
         navigateTo('dashboard');
@@ -2886,43 +3616,430 @@ jobs:
       const users = DB.get('users', []);
       const apps = DB.get('apps', []);
 
-      const successful = apps.filter(a => a.status === 'Success').length;
-      const failed = apps.filter(a => a.status === 'Failed').length;
+      let activeCount = 0;
+      let pendingCount = 0;
+      let expiredCount = 0;
+      let adminCount = 0;
+
+      users.forEach(u => {
+        if (u.role === 'admin') adminCount++;
+        const access = getAccountAccessStatus(u);
+        if (access.status === 'pending') pendingCount++;
+        else if (access.isExpired || access.status === 'suspended') expiredCount++;
+        else activeCount++;
+      });
 
       document.getElementById('admin-stat-users').textContent = users.length;
+      document.getElementById('admin-stat-active').textContent = activeCount;
+      document.getElementById('admin-stat-pending').textContent = pendingCount;
+      document.getElementById('admin-stat-expired').textContent = expiredCount;
       document.getElementById('admin-stat-apps').textContent = apps.length;
-      document.getElementById('admin-stat-builds').textContent = apps.length;
-      document.getElementById('admin-stat-success').textContent = successful;
-      document.getElementById('admin-stat-failed').textContent = failed;
-      document.getElementById('admin-users-count').textContent = users.length;
-      document.getElementById('admin-apps-count').textContent = apps.length;
 
-      // Render Users
-      const uContainer = document.getElementById('admin-users-container');
-      uContainer.innerHTML = users.map(u => {
+      document.getElementById('admin-tab-users-badge').textContent = users.length;
+      document.getElementById('admin-tab-apps-badge').textContent = apps.length;
+
+      // Filter pill counts
+      document.getElementById('filter-count-all').textContent = users.length;
+      document.getElementById('filter-count-active').textContent = activeCount;
+      document.getElementById('filter-count-pending').textContent = pendingCount;
+      document.getElementById('filter-count-expired').textContent = expiredCount;
+      document.getElementById('filter-count-suspended').textContent = users.filter(u => u.status === 'suspended').length;
+      document.getElementById('filter-count-admin').textContent = adminCount;
+
+      switchAdminTab(currentAdminTab);
+    }
+
+    function filterAdminUsers(filterName) {
+      adminUsersFilter = filterName;
+      document.querySelectorAll('.filter-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-filter') === filterName);
+      });
+      renderAdminUsersList();
+    }
+
+    function renderAdminUsersList() {
+      const users = DB.get('users', []);
+      const apps = DB.get('apps', []);
+      const search = (document.getElementById('admin-user-search')?.value || '').toLowerCase().trim();
+
+      const filtered = users.filter(u => {
+        // Search filter
+        const matchSearch = !search || u.name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
+        if (!matchSearch) return false;
+
+        // Status filter
+        const access = getAccountAccessStatus(u);
+        if (adminUsersFilter === 'active') return !access.isExpired;
+        if (adminUsersFilter === 'pending') return access.status === 'pending';
+        if (adminUsersFilter === 'expired') return access.status === 'expired';
+        if (adminUsersFilter === 'suspended') return access.status === 'suspended';
+        if (adminUsersFilter === 'admin') return u.role === 'admin';
+        return true;
+      });
+
+      const container = document.getElementById('admin-users-container');
+      if (!container) return;
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="card" style="text-align: center; color: var(--text-muted); padding: 2rem;">Tidak ada akun yang sesuai dengan filter pencarian.</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(u => {
         const uApps = apps.filter(a => a.user_id === u.id).length;
+        const access = getAccountAccessStatus(u);
+        const isCurrent = (currentUser && u.id === currentUser.id);
+
+        let roleBadge = u.role === 'admin'
+          ? '<span class="badge" style="background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE;">👑 Administrator</span>'
+          : '<span class="badge badge-secondary">Pengguna</span>';
+
         return `
-          <div class="card" style="margin-bottom: 0.75rem; padding: 1rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
-              <div>
-                <strong>${escapeHtml(u.name)}</strong>
-                <span class="badge ${u.role === 'admin' ? 'badge-warning' : 'badge-secondary'}" style="margin-left: 0.5rem;">${u.role}</span>
-                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
-                  ${escapeHtml(u.email)} • Terdaftar ${formatDate(u.created_at)} • ${uApps} aplikasi
-                </div>
+          <div class="user-card">
+            <div style="flex: 1; min-width: 260px;">
+              <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                <strong style="font-size: 1rem;">${escapeHtml(u.name)}</strong>
+                ${roleBadge}
+                <span class="badge ${access.badgeClass}">${access.label}</span>
               </div>
-              ${u.id !== currentUser.id ? `
-                <button class="btn btn-danger btn-sm" onclick="adminDeleteUser('${u.id}')">Hapus User</button>
-              ` : '<span style="font-size: 0.8rem; color: var(--text-muted);">Akun Anda</span>'}
+              <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.35rem; display: flex; flex-wrap: wrap; gap: 0.85rem;">
+                <span>📧 <code>${escapeHtml(u.email)}</code></span>
+                <span>📅 Terdaftar: ${formatDateShort(u.created_at)}</span>
+                <span>📱 ${uApps} aplikasi</span>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              ${u.status === 'pending' ? `
+                <button class="btn btn-primary btn-sm" onclick="adminApproveUser('${u.id}')">
+                  ✓ Setujui & Aktifkan
+                </button>
+              ` : ''}
+              <button class="btn btn-secondary btn-sm" onclick="openEditUserModal('${u.id}')">
+                ⚙️ Edit Akun & Akses
+              </button>
+              ${!isCurrent ? `
+                <button class="btn btn-danger btn-sm" onclick="adminDeleteUser('${u.id}')">
+                  🗑️ Hapus
+                </button>
+              ` : '<span style="font-size: 0.8rem; font-weight: 600; color: var(--primary); padding: 0.35rem 0.5rem;">(Akun Anda)</span>'}
             </div>
           </div>
         `;
       }).join('');
+    }
 
-      // Render All Apps
+    /* Modal: Add User Handlers */
+    function openAddUserModal() {
+      document.getElementById('form-add-user').reset();
+      document.getElementById('add-user-custom-date-box').style.display = 'none';
+      document.getElementById('addUserModal').style.display = 'flex';
+    }
+
+    function closeAddUserModal() {
+      document.getElementById('addUserModal').style.display = 'none';
+    }
+
+    function onAddUserRoleChange() {
+      const role = document.getElementById('add-user-role').value;
+      if (role === 'admin') {
+        document.getElementById('add-user-period').value = 'lifetime';
+        document.getElementById('add-user-custom-date-box').style.display = 'none';
+      }
+    }
+
+    function onAddUserPeriodChange() {
+      const val = document.getElementById('add-user-period').value;
+      const box = document.getElementById('add-user-custom-date-box');
+      if (val === 'custom') {
+        box.style.display = 'block';
+        if (!document.getElementById('add-user-custom-date').value) {
+          document.getElementById('add-user-custom-date').value = calculateDateOffset(30);
+        }
+      } else {
+        box.style.display = 'none';
+      }
+    }
+
+    function saveNewUser(e) {
+      e.preventDefault();
+      const name = document.getElementById('add-user-name').value.trim();
+      const email = document.getElementById('add-user-email').value.trim().toLowerCase();
+      const password = document.getElementById('add-user-pass').value;
+      const role = document.getElementById('add-user-role').value;
+      const status = document.getElementById('add-user-status').value;
+      const period = document.getElementById('add-user-period').value;
+
+      const users = DB.get('users', []);
+      if (users.some(u => u.email.toLowerCase() === email)) {
+        showToast('Email sudah digunakan oleh akun lain.', 'error');
+        return;
+      }
+
+      let accessUntil = null;
+      if (period === 'lifetime') {
+        accessUntil = null;
+      } else if (period === 'custom') {
+        const customDate = document.getElementById('add-user-custom-date').value;
+        if (!customDate) {
+          showToast('Pilih tanggal kedaluwarsa kustom.', 'error');
+          return;
+        }
+        accessUntil = customDate;
+      } else {
+        accessUntil = calculateDateOffset(parseInt(period));
+      }
+
+      const newUser = {
+        id: (role === 'admin' ? 'admin-' : 'user-') + Date.now(),
+        name,
+        email,
+        password,
+        role,
+        status,
+        access_until: accessUntil,
+        created_at: new Date().toISOString()
+      };
+
+      users.push(newUser);
+      DB.set('users', users);
+      showToast(`Akun ${newUser.name} (${role}) berhasil dibuat!`, 'success');
+      closeAddUserModal();
+      loadAdmin();
+    }
+
+    /* Modal: Edit User & Access Handlers */
+    let currentEditingUserId = null;
+
+    function openEditUserModal(userId) {
+      const users = DB.get('users', []);
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+
+      currentEditingUserId = userId;
+      document.getElementById('edit-user-id').value = user.id;
+      document.getElementById('editUserModalTitle').textContent = `⚙️ Edit Akun & Masa Akses: ${user.name}`;
+      document.getElementById('edit-user-name').value = user.name;
+      document.getElementById('edit-user-email').value = user.email;
+      document.getElementById('edit-user-role').value = user.role || 'user';
+      document.getElementById('edit-user-status').value = user.status || 'active';
+      document.getElementById('edit-user-newpass').value = '';
+
+      const accessDisplay = document.getElementById('edit-user-current-access-display');
+      const access = getAccountAccessStatus(user);
+      accessDisplay.innerHTML = `Status saat ini: <span class="badge ${access.badgeClass}">${access.label}</span>`;
+
+      document.getElementById('edit-user-access-date').value = user.access_until || '';
+
+      document.getElementById('editUserModal').style.display = 'flex';
+    }
+
+    function closeEditUserModal() {
+      document.getElementById('editUserModal').style.display = 'none';
+      currentEditingUserId = null;
+    }
+
+    function quickExtendAccess(days) {
+      const curVal = document.getElementById('edit-user-access-date').value;
+      const nextDate = calculateDateOffset(days, curVal);
+      document.getElementById('edit-user-access-date').value = nextDate;
+      showToast(`Masa akses diperpanjang +${days} hari (s.d. ${formatDateShort(nextDate)})`, 'info');
+    }
+
+    function setLifetimeAccess() {
+      document.getElementById('edit-user-access-date').value = '';
+      showToast('Masa akses diatur ke Selamanya (Lifetime)', 'info');
+    }
+
+    function saveEditUser(e) {
+      e.preventDefault();
+      if (!currentEditingUserId) return;
+
+      let users = DB.get('users', []);
+      const idx = users.findIndex(u => u.id === currentEditingUserId);
+      if (idx === -1) return;
+
+      const newEmail = document.getElementById('edit-user-email').value.trim().toLowerCase();
+      // Check duplicate email
+      if (users.some((u, i) => i !== idx && u.email.toLowerCase() === newEmail)) {
+        showToast('Email sudah digunakan oleh akun lain.', 'error');
+        return;
+      }
+
+      users[idx].name = document.getElementById('edit-user-name').value.trim();
+      users[idx].email = newEmail;
+      users[idx].role = document.getElementById('edit-user-role').value;
+      users[idx].status = document.getElementById('edit-user-status').value;
+
+      const dateVal = document.getElementById('edit-user-access-date').value;
+      users[idx].access_until = dateVal ? dateVal : null;
+
+      const newPass = document.getElementById('edit-user-newpass').value;
+      if (newPass && newPass.length >= 6) {
+        users[idx].password = newPass;
+      }
+
+      DB.set('users', users);
+
+      // If editing current logged in user
+      if (currentUser && currentUser.id === currentEditingUserId) {
+        currentUser = users[idx];
+        DB.set('current_user', currentUser);
+        renderNavbar(currentAdminTab === 'users' ? 'admin' : 'dashboard');
+      }
+
+      showToast('Perubahan akun dan masa akses berhasil disimpan!', 'success');
+      closeEditUserModal();
+      loadAdmin();
+    }
+
+    function adminApproveUser(userId) {
+      let users = DB.get('users', []);
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx === -1) return;
+
+      users[idx].status = 'active';
+      if (!users[idx].access_until) {
+        users[idx].access_until = calculateDateOffset(30);
+      }
+      DB.set('users', users);
+      showToast(`Akun ${users[idx].name} telah disetujui & diaktifkan (30 hari)!`, 'success');
+      loadAdmin();
+    }
+
+    function adminDeleteUser(userId) {
+      if (currentUser && currentUser.id === userId) {
+        showToast('Anda tidak dapat menghapus akun Anda sendiri.', 'error');
+        return;
+      }
+
+      if (!confirm('Yakin ingin menghapus akun ini beserta seluruh riwayat aplikasinya?')) return;
+      let users = DB.get('users', []);
+      users = users.filter(u => u.id !== userId);
+      DB.set('users', users);
+
+      let apps = DB.get('apps', []);
+      apps = apps.filter(a => a.user_id !== userId);
+      DB.set('apps', apps);
+
+      showToast('Akun pengguna dan aplikasinya telah dihapus.', 'success');
+      loadAdmin();
+    }
+
+    /* Tab 2: Admin Profile & Credentials */
+    function loadAdminProfileForm() {
+      if (!currentUser) return;
+      document.getElementById('admin-prof-name').value = currentUser.name;
+      document.getElementById('admin-prof-email').value = currentUser.email;
+      document.getElementById('admin-prof-newpass').value = '';
+      document.getElementById('admin-prof-confirmpass').value = '';
+    }
+
+    function saveAdminProfile(e) {
+      e.preventDefault();
+      if (!currentUser) return;
+
+      const name = document.getElementById('admin-prof-name').value.trim();
+      const email = document.getElementById('admin-prof-email').value.trim().toLowerCase();
+      const newPass = document.getElementById('admin-prof-newpass').value;
+      const confirmPass = document.getElementById('admin-prof-confirmpass').value;
+
+      if (newPass) {
+        if (newPass.length < 6) {
+          showToast('Password baru minimal 6 karakter.', 'error');
+          return;
+        }
+        if (newPass !== confirmPass) {
+          showToast('Password baru dan konfirmasi tidak cocok.', 'error');
+          return;
+        }
+      }
+
+      let users = DB.get('users', []);
+      const idx = users.findIndex(u => u.id === currentUser.id);
+      if (idx === -1) return;
+
+      if (users.some((u, i) => i !== idx && u.email.toLowerCase() === email)) {
+        showToast('Email tersebut sudah digunakan oleh akun lain.', 'error');
+        return;
+      }
+
+      users[idx].name = name;
+      users[idx].email = email;
+      if (newPass) {
+        users[idx].password = newPass;
+      }
+
+      DB.set('users', users);
+      currentUser = users[idx];
+      DB.set('current_user', currentUser);
+
+      showToast('Profil & kredensial admin berhasil diperbarui!', 'success');
+      renderNavbar('admin');
+      loadAdminProfileForm();
+    }
+
+    /* Tab 3: Registration Policy */
+    function loadAdminPolicyForm() {
+      const policy = DB.get('access_policy', {
+        registration_mode: 'open',
+        default_trial_days: 30,
+        invite_code_enabled: false,
+        invite_code: ''
+      });
+
+      const radios = document.getElementsByName('reg-mode');
+      radios.forEach(r => {
+        r.checked = (r.value === policy.registration_mode);
+      });
+
+      document.getElementById('policy-trial-days').value = String(policy.default_trial_days);
+      document.getElementById('policy-invite-enabled').checked = !!policy.invite_code_enabled;
+      document.getElementById('policy-invite-code').value = policy.invite_code || '';
+      toggleInviteCodeField();
+    }
+
+    function toggleInviteCodeField() {
+      const enabled = document.getElementById('policy-invite-enabled').checked;
+      const box = document.getElementById('policy-invite-container');
+      if (box) box.style.display = enabled ? 'block' : 'none';
+    }
+
+    function saveAdminPolicy(e) {
+      e.preventDefault();
+      let mode = 'open';
+      document.getElementsByName('reg-mode').forEach(r => {
+        if (r.checked) mode = r.value;
+      });
+
+      const trialDays = parseInt(document.getElementById('policy-trial-days').value);
+      const inviteEnabled = document.getElementById('policy-invite-enabled').checked;
+      const inviteCode = document.getElementById('policy-invite-code').value.trim();
+
+      if (inviteEnabled && !inviteCode) {
+        showToast('Mohon masukkan kode undangan resmi jika opsi diaktifkan.', 'error');
+        return;
+      }
+
+      const policy = {
+        registration_mode: mode,
+        default_trial_days: trialDays,
+        invite_code_enabled: inviteEnabled,
+        invite_code: inviteCode
+      };
+
+      DB.set('access_policy', policy);
+      showToast('Kebijakan registrasi dan masa akses berhasil disimpan!', 'success');
+    }
+
+    /* Tab 4: Apps Management */
+    function renderAdminAppsList() {
+      const apps = DB.get('apps', []);
       const aContainer = document.getElementById('admin-apps-container');
+      if (!aContainer) return;
+
       if (apps.length === 0) {
-        aContainer.innerHTML = '<div class="card">Belum ada aplikasi yang dibuat oleh pengguna manapun.</div>';
+        aContainer.innerHTML = '<div class="card" style="text-align: center; color: var(--text-muted); padding: 2rem;">Belum ada aplikasi yang dibuat oleh pengguna manapun.</div>';
         return;
       }
 
@@ -2958,20 +4075,6 @@ jobs:
           </div>
         `;
       }).join('');
-    }
-
-    function adminDeleteUser(userId) {
-      if (!confirm('Yakin ingin menghapus user ini beserta seluruh aplikasinya?')) return;
-      let users = DB.get('users', []);
-      users = users.filter(u => u.id !== userId);
-      DB.set('users', users);
-
-      let apps = DB.get('apps', []);
-      apps = apps.filter(a => a.user_id !== userId);
-      DB.set('apps', apps);
-
-      showToast('User dan seluruh aplikasinya telah dihapus.', 'success');
-      loadAdmin();
     }
 
     function adminDeleteApp(appId) {
